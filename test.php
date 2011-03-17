@@ -4,7 +4,31 @@
 //print_r(ini_get_all(null, false));
 //echo ini_get('allow_url_fopen');
 
-$full = imagecreatefromjpeg('testpic.jpg');
+$imgurl = 'http://s3.amazonaws.com/scrnshots.com/screenshots/283317/godmotherbackupjpg';
+
+if (function_exists('curl_init')) { // Try with Curl 
+	$curl = curl_init();
+	$localimage = fopen("test.jpg", "wb");
+	curl_setopt($curl, CURLOPT_URL, $imgurl);
+	curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 1);
+	curl_setopt($curl, CURLOPT_FILE, $localimage);
+	curl_exec($curl);
+	curl_close($curl);
+} else { // Try with files functions
+	$filedata = "";
+	$remoteimage = fopen($imgurl, 'rb');
+	if ($remoteimage) {
+		 while(!feof($remoteimage)) {
+			$filedata.= fread($remoteimage, 1024*8);
+		 }
+	}
+	fclose($remoteimage);
+	$localimage = fopen("test.jpg", 'wb');
+	fwrite($localimage, $filedata);
+	fclose($localimage);
+ }
+
+$full = imagecreatefromjpeg('test.jpg');
 if (!$full)
 	echo 'Failed';
 
