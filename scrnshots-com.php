@@ -9,81 +9,72 @@ Author: Giulio Mainardi
 Author URI: http://mgiulio.altervista.org
 */
 
-//require_once( ABSPATH . "/wp-includes/js/tinymce/plugins/spellchecker/classes/utils/JSON.php" );
+require_once( ABSPATH . "/wp-includes/js/tinymce/plugins/spellchecker/classes/utils/JSON.php" );
 
 function get_scrnshotsRSS() {
+	if (true/* Cache is old */) { // USe WP Cron ?
+		$out = '<ul></ul>';
+		
+		// Retrieve the feed options
+		$numItems = 10; //get_option('scrnshotsRSS_display_numitems');
+		$username = 'giuliom'; //stripslashes(get_option('scrnshotsRSS_scrnshots_id'));
 
-  	for($i = 0 ; $i < func_num_args(); $i++) 
-	{
-    	$args[] = func_get_arg($i);
-    }
-
-  	if (!isset($args[0])) $num_items = get_option('scrnshotsRSS_display_numitems'); else $num_items = $args[0];
-  	if (!isset($args[1])) $imagesize = get_option('scrnshotsRSS_display_imagesize'); else $imagesize = $args[1];
-  	if (!isset($args[2])) $id_name = stripslashes(get_option('scrnshotsRSS_scrnshots_id')); else $id_name = $args[2];
-        
-	$useImageCache = get_option('scrnshotsRSS_use_image_cache');
-	$cachePath = get_option('scrnshotsRSS_image_cache_uri');
-	$fullPath = get_option('scrnshotsRSS_image_cache_dest'); 
+		// Get the feed and parse it
+		$feed = @file_get_contents('http://www.scrnshots.com/users/' . $username . '/screenshots.json');
+		$jsonDecoder = new Moxiecode_JSON();
+		$json = $jsonDecoder->decode($feed, true);
 	
-	$before_image = get_option('scrnshotsRSS_before');
-	$after_image = get_option('scrnshotsRSS_after');
-
-	// get the feed
-	$json = @file_get_contents( 'http://www.scrnshots.com/users/' . $id_name . '/screenshots.json' );
-	$json_obj = new Moxiecode_JSON();
-	$json_scrnshots = $json_obj->decode( $json, true );
+		$numShotsInFeed = count($json);
 	
-	$numShotsInFeed = count($json_scrnshots);
-	
-	if ( $numShotsInFeed <= 0)
-		return;
-		
-	if ($numShotsInFeed < $num_items  )
-		$num_items = $numShotsInFeed;
+		if ($numShotsInFeed > 0) {
+			if ($numShotsInFeed < $numItems)
+				$numItems = $numShotsInFeed;
 
-	for ($i = 0; $i < $num_items; $i++) {
-		// Extract the relevant data from the feed
-		$imgurl = $json_scrnshots[$i]['images']['fullsize'];
-		$url = $json_scrnshots[$i]['url'];
-		$title = ($json_scrnshots[$i]['description']) ? str_replace( "\"","'", $json_scrnshots[$i]['description'] ): 'Screenshot from ScrnShots.com';
-		
-		// Extract the image slug from its url
-		preg_match('~ScrnShotsDesktop\-([^.]*)\.png~i', $imgurl, $scrnshotsMatches);
-		$scrnshotsSlug = $scrnshotsMatches[1];
-		
-		// Cache check
-		if (!file_exists("$fullPath$scrnshotsSlug.png")) {
-			// Copy on this server the full size shot
-			if (function_exists('curl_init')) { // Try with Curl 
-				$curl = curl_init();
-				$localimage = fopen("$fullPath$scrnshotsSlug.png", "wb");
-				curl_setopt($curl, CURLOPT_URL, $imgurl);
-				curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 1);
-				curl_setopt($curl, CURLOPT_FILE, $localimage);
-				curl_exec($curl);
-				curl_close($curl);
-			} else { // Try with files functions
-				$filedata = "";
-				$remoteimage = fopen($imgurl, 'rb');
-				if ($remoteimage) {
-					 while(!feof($remoteimage)) {
-						$filedata.= fread($remoteimage, 1024*8);
-					 }
-				}
-				fclose($remoteimage);
-				$localimage = fopen("$fullPath$scrnshotsSlug.png", 'wb');
-				fwrite($localimage, $filedata);
-				fclose($localimage);
-			 }
-			 
-			 // Generate and cache the thumbnail
-				// See dndfaves php
-		} 
-		
-		// Finally, output the linked thumbnail
-		print $before_image . "<a href=\"$url\" title=\"$title\" rel=\"nofollow\"><img src=\"$cachePath$scrnshotsSlug.png\" alt=\"$title\" /></a>" . $after_image;
+			for ($i = 0; $i < $numItems; $i++) {
+				// Extract the relevant data from the feed
+				$shotPage = $json[$i]['url'];
+				$title = ($json_scrnshots[$i]['description']) ? str_replace( "\"","'", $json[$i]['description'] ): 'Screenshot from ScrnShots.com';
+				$fullSizeUrl = $json[$i]['images']['fullsize'];
+				$localTnUrl = ...;
+				// Extract the image slug from its url
+				preg_match('~ScrnShotsDesktop\-([^.]*)\.png~i', $imgurl, $scrnshotsMatches);
+				$scrnshotsSlug = $scrnshotsMatches[1];
+				
+				$out .= "<li><a href=\"$shotPage\" title=\"$title\" rel=\"nofollow\"><img src=\"$localTnUrl\" alt=\"$title\" /></a></li>";
+	
+				// Generate the local thumbnail if we don't have it
+				if (!file_exists('$localTnUrl')) {
+					$fullIm = imagecreatefromjpeg($fullSizeUrl);
+					if (!$fullIm)
+						echo 'Failed';
+
+					// Compute thumbnail size
+					$w = imagesx($fullIm);
+					$h = imagesy($fullIm);
+					$aspectRatio = (float)$w / (float)$h;
+					$tnSize = 240; // Pixels
+					if ($aspectRatio > 1.0) { // Landscape format
+						$tnW = $tnSize;
+						$tnH = $tnSize / $aspectRatio;
+					}
+					else { // Portrait format
+						$tnH = $tnSize;
+						$tnW = $tnSize * $aspectRatio;
+					}
+
+					// Thumbnail creation
+					$tnIm = imagecreatetruecolor($tnW, $tnH);
+					imagecopyresampled($tnIm, $fullIm, 0, 0, 0, 0, $tnW, $tnH, $w, $h); 
+
+					imagejpeg($tnIm, $localTnUrl);
+					imagedestroy($tnIm);
+					imagedestroy($fullIm);
+				} // Thumbnail generation
+			} // Feed items cycle
+		} // HTML string creation block
+		//fwrite($out, cachedHTML);
 	}
+	include($cachedHTMLPath);
 }
 
 function widget_scrnshotsRSS_init() {

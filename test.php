@@ -6,7 +6,7 @@
 
 $imgurl = 'http://s3.amazonaws.com/scrnshots.com/screenshots/283317/godmotherbackupjpg';
 
-if (function_exists('curl_init')) { // Try with Curl 
+/* if (function_exists('curl_init')) { // Try with Curl 
 	$curl = curl_init();
 	$localimage = fopen("test.jpg", "wb");
 	curl_setopt($curl, CURLOPT_URL, $imgurl);
@@ -26,9 +26,10 @@ if (function_exists('curl_init')) { // Try with Curl
 	$localimage = fopen("test.jpg", 'wb');
 	fwrite($localimage, $filedata);
 	fclose($localimage);
- }
+} */
 
-$full = imagecreatefromjpeg('test.jpg');
+$full = imagecreatefromjpeg($imgurl);
+//$full = imagecreatefromjpeg('test.jpg');
 if (!$full)
 	echo 'Failed';
 
