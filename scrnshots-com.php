@@ -9,11 +9,11 @@ Author: Giulio Mainardi
 Author URI: http://mgiulio.altervista.org
 */
 
-require_once( ABSPATH . "/wp-includes/js/tinymce/plugins/spellchecker/classes/utils/JSON.php" );
+require_once(ABSPATH . "/wp-includes/js/tinymce/plugins/spellchecker/classes/utils/JSON.php");
 
-function get_scrnshotsRSS() {
+function shotsMarkup() {
 	if (true/* Cache is old */) { // USe WP Cron ?
-		$out = '<ul></ul>';
+		$out = '<ul></ul>'; // class, id?
 		
 		// Retrieve the feed options
 		$numItems = 10; //get_option('scrnshotsRSS_display_numitems');
@@ -31,14 +31,23 @@ function get_scrnshotsRSS() {
 				$numItems = $numShotsInFeed;
 
 			for ($i = 0; $i < $numItems; $i++) {
-				// Extract the relevant data from the feed
-				$shotPage = $json[$i]['url'];
-				$title = ($json_scrnshots[$i]['description']) ? str_replace( "\"","'", $json[$i]['description'] ): 'Screenshot from ScrnShots.com';
-				$fullSizeUrl = $json[$i]['images']['fullsize'];
-				$localTnUrl = ...;
-				// Extract the image slug from its url
-				preg_match('~ScrnShotsDesktop\-([^.]*)\.png~i', $imgurl, $scrnshotsMatches);
-				$scrnshotsSlug = $scrnshotsMatches[1];
+				$s = $json[$i];
+				
+				// Extract data from feed
+				$shotPage = $s['url'];
+				$title = ($s['description'])? str_replace( "\"","'", $s['description'] ): 'Screenshot from ScrnShots.com';
+				$fullSizeUrl = $s['images']['fullsize'];
+				
+				// Compute the thumbnail filename.
+				// Use the numeric Id.
+				$matches = array();
+				preg_match("/\/\d+\//", $fullSizeUrl, $matches);
+				$tnFilename = $matches[0];
+				
+				// Determine shot image format
+				$tnExt = 'jpg';
+				
+				$localTnUrl = $tnDir . $tnFilename . '.' . $tnExt;
 				
 				$out .= "<li><a href=\"$shotPage\" title=\"$title\" rel=\"nofollow\"><img src=\"$localTnUrl\" alt=\"$title\" /></a></li>";
 	
@@ -72,9 +81,11 @@ function get_scrnshotsRSS() {
 				} // Thumbnail generation
 			} // Feed items cycle
 		} // HTML string creation block
-		//fwrite($out, cachedHTML);
+		// Store in persistent storage. fwrite($out, cachedHTML);
 	}
-	include($cachedHTMLPath);
+	
+	$out = // Retrieve from persisten storage. include($cachedHTMLPath);
+	return $out;
 }
 
 function widget_scrnshotsRSS_init() {
@@ -92,7 +103,7 @@ function widget_scrnshotsRSS_init() {
 		$before_images = '<div class="slideshow">';
 		$after_images = '</div> <!-- .slideshow -->';
 		echo $before_widget . $before_title . $title . $after_title . $before_images;
-		get_scrnshotsRSS();
+		echo shotsMarkup();
 		echo $after_images . $after_widget;
 	}
 
