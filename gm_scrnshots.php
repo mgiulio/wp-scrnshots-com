@@ -1,9 +1,9 @@
 <?php
 /*
-Plugin Name: scrnshots
-Plugin URI: 
-Description: 
-Version: 
+Plugin Name: gm_scrnshots
+Plugin URI: http://mgiulio.altervista.org
+Description: Blah blah
+Version: ??.??
 License: GPL
 Author: Giulio Mainardi
 Author URI: http://mgiulio.altervista.org
@@ -14,6 +14,9 @@ $username = 'giuliom'; //stripslashes(get_option('scrnshots_scrnshots_id'));
 $numItems = 10; //get_option('scrnshots_display_numitems');
 */
 
+$gm_scrnshots_plugin_dir = '';
+$gm_scrnshots_plugin_url = '';
+
 /*
  *
  */
@@ -23,10 +26,11 @@ require_once(ABSPATH . "/wp-includes/js/tinymce/plugins/spellchecker/classes/uti
 //require_once('JSON.php');
 function shotsMarkup($username, $numItems) {
 	if (true/* Cache is old */) { // USe WP Cron ?
-		$out = '<ul>\n'; // class, id?
+		$out = "<ul>\n"; // class, id?
 		
 		// Get the feed and parse it
-		$feed = @file_get_contents('http://www.scrnshots.com/users/' . $username . '/screenshots.json');
+		$feed = /*@*/file_get_contents("http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/screenshots.json");//'http://www.scrnshots.com/users/' . $username . '/screenshots.json');
+		if (!$feed) echo "Could not load feed";
 		$jsonDecoder = new Moxiecode_JSON();
 		$json = $jsonDecoder->decode($feed, true);
 	
@@ -60,15 +64,16 @@ function shotsMarkup($username, $numItems) {
 				
 				$tnFilenamePlusExt = $tnFilename . '.' . $tnExt;
 				// Asemble the thumbnail url
-				
-				$localTnPath = "$pluginDir/tn/$tnFilenamePlusExt";
-				$localTnUrl = "pluginUrl/tn/$tnFilenamePlusExt";
-				
-				$out .= "<li><a href=\"$shotPage\" title=\"$title\" rel=\"nofollow\"><img src=\"$localTnUrl\" alt=\"$title\" /></a></li>\n";
+	
+				global $gm_scrnshots_plugin_dir, $gm_scrnshots_plugin_url;
+				$tnPath = "$gm_scrnshots_plugin_dir/tn/$tnFilenamePlusExt";
+				$tnUrl = "$gm_scrnshots_plugin_url/tn/$tnFilenamePlusExt";
+			
+				$out .= "\n<li><a href=\"$shotPage\" title=\"$title\" rel=\"nofollow\"><img src=\"$tnUrl\" alt=\"$title\" /></a></li>";
 	
 				// Generate the local thumbnail if we don't have it
-				if (!file_exists("$localTnPath")) {
-					echo "$fullSizeUrl\n";
+				if (!file_exists("$tnPath")) {
+					$fullSizeUrl = 'http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/fullsize-test.jpg';
 					$fullIm = imagecreatefromjpeg($fullSizeUrl); // FIXME
 					if (!$fullIm)
 						echo 'Failed';
@@ -92,10 +97,10 @@ function shotsMarkup($username, $numItems) {
 					imagecopyresampled($tnIm, $fullIm, 0, 0, 0, 0, $tnW, $tnH, $w, $h); 
 
 					// Save it locally
-					//echo "Saving: $localTnPath\n";
-					imagejpeg($tnIm, $localTnPath); // This doesn't work
+					//echo "Saving: $tnPath\n";
+					imagejpeg($tnIm, $tnPath); // This doesn't work
 					//fclose(fopen("/wp-content/plugins/scrnshots-com/tn/bar.test", 'w'));
-					//fclose(fopen("$localTnPath", 'w'));
+					//fclose(fopen("$tnPath", 'w'));
 					//fclose(fopen("./tn/foo.test", 'w'));
 					//fclose(fopen("$tnFilenamePlusExt", 'w'));
 					//imagejpeg($tnIm, "./tn/$tnFilenamePlusExt"); // This works
@@ -105,7 +110,7 @@ function shotsMarkup($username, $numItems) {
 				} // Thumbnail generation
 			} // Feed items cycle
 		} // HTML string creation block
-		$out .= '</ul>\n';
+		$out .= "</ul>\n";
 		// Store in persistent storage. fwrite($out, cachedHTML);
 	}
 	
@@ -116,26 +121,53 @@ function shotsMarkup($username, $numItems) {
 /*
  * Register the widget
  */
-function widget_scrnshots_init() {
+function widget_gm_scrnshots_init() {
 	if (!function_exists('register_sidebar_widget')) 
 		return;
+		
+	// Set paths and urls
+	if (!function_exists( 'is_ssl' ) ) {
+		function is_ssl() {
+			if ( isset($_SERVER['HTTPS']) ) {
+				if ( 'on' == strtolower($_SERVER['HTTPS']) )
+					return true;
+				if ( '1' == $_SERVER['HTTPS'] )
+					return true;
+			} 
+			elseif ( isset($_SERVER['SERVER_PORT']) && ( '443' == $_SERVER['SERVER_PORT'] ) ) {
+				return true;
+			}
+			return false;
+		}
+	}
 
-	function widget_scrnshots($args) {
+	if ( version_compare( get_bloginfo( 'version' ) , '3.0' , '<' ) && is_ssl() ) {
+		$wp_content_url = str_replace( 'http://' , 'https://' , get_option( 'siteurl' ) );
+	} 
+	else {
+		$wp_content_url = get_option( 'siteurl' );
+	}
+	$wp_content_url .= '/wp-content';
+
+	global $gm_scrnshots_plugin_dir, $gm_scrnshots_plugin_url;
+	$gm_scrnshots_plugin_dir = ABSPATH . 'wp-content/plugins/gm_scrnshots';
+	$gm_scrnshots_plugin_url = $wp_content_url . '/plugins/gm_scrnshots';
+	//$gm_scrnshots_plugin_url = trailingslashit(get_bloginfo('wpurl')) . PLUGINDIR .'/' . dirname(plugin_basename(__FILE__))
+
+	function widget_gm_scrnshots($args) {
 		extract($args);
 		
-		//$options = get_option('widget_scrnshots');
+		//$options = get_option('widget_gm_scrnshots');
 		
 		echo $before_widget 
-			. '<div class="slideshow">' 
-			. shotsMarkup("giuliom", 3); 
-			. '</div> <!-- .slideshow -->' 
+			. shotsMarkup("giuliom", 3)//'<h3>Test</h3>'
 			. $after_widget;
 	}
 
-	function widget_scrnshots_control() {
-		$options = get_option('widget_scrnshots');
+	function widget_gm_scrnshots_control() {
+		$options = get_option('widget_gm_scrnshots');
 
-		if ( $_POST['scrnshots-submit'] ) {
+		if ( $_POST['gm_scrnshots-submit'] ) {
 			/* $options['title'] = strip_tags(stripslashes($_POST['scrnshots-title']));
 			$options['before_images'] = $_POST['scrnshots-beforeimages'];
 			$options['after_images'] = $_POST['scrnshots-afterimages'];
@@ -146,20 +178,20 @@ function widget_scrnshots_init() {
 		$before_images = htmlspecialchars($options['before_images'], ENT_QUOTES);
 		$after_images = htmlspecialchars($options['after_images'], ENT_QUOTES); */
 		
-		/* echo '<p style="text-align:right;"><label for="scrnshots-title">Title: <input style="width: 180px;" id="gsearch-title" name="scrnshots-title" type="text" value="'.$title.'" /></label></p>';
-		echo '<p style="text-align:right;"><label for="scrnshots-beforeimages">Before all images: <input style="width: 180px;" id="scrnshots-beforeimages" name="scrnshots-beforeimages" type="text" value="'.$before_images.'" /></label></p>';
-		echo '<p style="text-align:right;"><label for="scrnshots-afterimages">After all images: <input style="width: 180px;" id="scrnshots-afterimages" name="scrnshots-afterimages" type="text" value="'.$after_images.'" /></label></p>';
-		echo '<input type="hidden" id="scrnshots-submit" name="scrnshots-submit" value="1" />'; */
+		/* echo '<p style="text-align:right;"><label for="gm_scrnshots-title">Title: <input style="width: 180px;" id="gsearch-title" name="gm_scrnshots-title" type="text" value="'.$title.'" /></label></p>';
+		echo '<p style="text-align:right;"><label for="gm_scrnshots-beforeimages">Before all images: <input style="width: 180px;" id="gm_scrnshots-beforeimages" name="gm_scrnshots-beforeimages" type="text" value="'.$before_images.'" /></label></p>';
+		echo '<p style="text-align:right;"><label for="gm_scrnshots-afterimages">After all images: <input style="width: 180px;" id="gm_scrnshots-afterimages" name="gm_scrnshots-afterimages" type="text" value="'.$after_images.'" /></label></p>';
+		echo '<input type="hidden" id="gm_scrnshots-submit" name="gm_scrnshots-submit" value="1" />'; */
 	}		
 
-	register_sidebar_widget('scrnshots', 'widget_scrnshots');
-	register_widget_control('scrnshots', 'widget_scrnshots_control', 300, 100);
+	register_sidebar_widget('gm_scrnshots', 'widget_gm_scrnshots');
+	register_widget_control('gm_scrnshots', 'widget_gm_scrnshots_control', 300, 100);
 }
 
 
-function scrnshots_subpanel() {
-    if (isset($_POST['save_scrnshots_settings'])) {
-		$option_scrnshots_id = $_POST['scrnshots_id'];
+function gm_scrnshots_subpanel() {
+    if (isset($_POST['save_gm_scrnshots_settings'])) {
+		$option_gm_scrnshots_id = $_POST['gm_scrnshots_id'];
 		$option_display_numitems = $_POST['display_numitems'];
 		$option_display_imagesize = $_POST['display_imagesize'];
 		$option_before = $_POST['before_image'];
@@ -167,14 +199,14 @@ function scrnshots_subpanel() {
 		$option_useimagecache = $_POST['use_image_cache'];
 		$option_imagecacheuri = $_POST['image_cache_uri'];
 		$option_imagecachedest = $_POST['image_cache_dest'];
-		update_option('scrnshots_scrnshots_id', $option_scrnshots_id);
-		update_option('scrnshots_display_numitems', $option_display_numitems);
-		update_option('scrnshots_display_imagesize', $option_display_imagesize);
-		update_option('scrnshots_before', $option_before);
-		update_option('scrnshots_after', $option_after);
-		update_option('scrnshots_use_image_cache', $option_useimagecache);
-		update_option('scrnshots_image_cache_uri', $option_imagecacheuri);
-		update_option('scrnshots_image_cache_dest', $option_imagecachedest);
+		update_option('gm_scrnshots_gm_scrnshots_id', $option_gm_scrnshots_id);
+		update_option('gm_scrnshots_display_numitems', $option_display_numitems);
+		update_option('gm_scrnshots_display_imagesize', $option_display_imagesize);
+		update_option('gm_scrnshots_before', $option_before);
+		update_option('gm_scrnshots_after', $option_after);
+		update_option('gm_scrnshots_use_image_cache', $option_useimagecache);
+		update_option('gm_scrnshots_image_cache_uri', $option_imagecacheuri);
+		update_option('gm_scrnshots_image_cache_dest', $option_imagecachedest);
 		?> <div class="updated"><p>scrnshots settings saved</p></div> <?php
      }
 
@@ -266,16 +298,15 @@ function scrnshots_admin_menu() {
 }
 
 function scrnshots_js() {
-	$plugin_url = trailingslashit(get_bloginfo('wpurl')) . PLUGINDIR .'/' . dirname(plugin_basename(__FILE__));
- 
 	if (!is_admin()) {
 		wp_enqueue_script('jquery');
-		wp_enqueue_script('cycle', $plugin_url . '/jquery.cycle.all.js', array('jquery'));
-		wp_enqueue_script('scrnshots_script', $plugin_url .'/script.js', array('jquery'));
+		wp_enqueue_script('cycle', $gm_scrnshots_plugin_url . '/jquery.cycle.all.js', array('jquery'));
+		wp_enqueue_script('scrnshots_script', $gm_scrnshots_plugin_url .'/script.js', array('jquery'));
 	}
 }
 
 //add_action('admin_menu', 'scrnshots_admin_menu');
-add_action('plugins_loaded', 'widget_scrnshots_init');
-add_action('wp_print_scripts', 'scrnshots_js');
+add_action('plugins_loaded', 'widget_gm_scrnshots_init');
+//add_action('wp_print_scripts', 'scrnshots_js');
+
 ?>
