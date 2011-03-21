@@ -110,12 +110,15 @@ function shotsMarkup($username, $numItems) {
 				} // Thumbnail generation
 			} // Feed items cycle
 		} // HTML string creation block
+		
+		// Close the markup
 		$out .= "</ul>\n";
-		// Store in persistent storage. fwrite($out, cachedHTML);
+		
+		// Store it in persistent storage.
 	}
+		file_put_contents("$gm_scrnshots_plugin_dir/markup.html", $out);
 	
-	//$out = // Retrieve from persisten storage. include($cachedHTMLPath);
-	return $out;
+	include("$gm_scrnshots_plugin_dir/markup.html");
 }
 
 /*
@@ -159,9 +162,9 @@ function widget_gm_scrnshots_init() {
 		
 		//$options = get_option('widget_gm_scrnshots');
 		
-		echo $before_widget 
-			. shotsMarkup("giuliom", 3)//'<h3>Test</h3>'
-			. $after_widget;
+		echo $before_widget; 
+		shotsMarkup("giuliom", 3);
+		echo $after_widget;
 	}
 
 	function widget_gm_scrnshots_control() {
@@ -305,8 +308,25 @@ function scrnshots_js() {
 	}
 }
 
+/*
+ * Hooks registration
+ */
+register_activation_hook(__FILE__, 'on_activation');
+register_deactivation_hook(__FILE__, 'on_deactivation');
 //add_action('admin_menu', 'scrnshots_admin_menu');
 add_action('plugins_loaded', 'widget_gm_scrnshots_init');
 //add_action('wp_print_scripts', 'scrnshots_js');
 
+function on_activation()() {
+	wp_schedule_event(0, 'daily', 'wp_votd_update_contents');
+			$this->set_options('RESET');
+			$this->update_contents();
+		}
+		
+		function _on_deactivation() {
+			delete_option('wp_votd_options');
+			delete_option('wp_votd_cache');
+			remove_action('wp_votd_update_contents', 'wp_votd_update_contents');
+			wp_clear_scheduled_hook('wp_votd_update_contents');
+		}
 ?>
