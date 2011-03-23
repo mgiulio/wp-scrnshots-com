@@ -25,10 +25,41 @@ License: GPL2
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-global $gm_scrnshots_plugin_dir, $gm_scrnshots_plugin_url;
+/*
+ * Setting paths and urls.
+ */
+if (!defined('ABSPATH')) {
+	die('Please do not load this file directly.');
+}
 
-function setPathsAndUrls() {
-	global $gm_scrnshots_plugin_dir, $gm_scrnshots_plugin_url;
+global // Use an array?
+	$gm_scrnshots_content_dir, 
+	$gm_scrnshots_content_url, 
+	$gm_scrnshots_plugin_dir,
+	$gm_scrnshots_plugin_url
+;
+
+function setPathsAndUrls_WP_DB() {
+	global 
+		$gm_scrnshots_content_dir, 
+		$gm_scrnshots_content_url, 
+		$gm_scrnshots_plugin_dir,
+		$gm_scrnshots_plugin_url
+	;
+	
+	$gm_scrnshots_content_dir = (defined('WP_CONTENT_DIR')) ? WP_CONTENT_DIR : ABSPATH . 'wp-content';
+	$gm_scrnshots_content_url = (defined('WP_CONTENT_URL')) ? WP_CONTENT_URL : get_option('siteurl') . '/wp-content';
+	$gm_scrnshots_plugin_dir =  (defined('WP_PLUGIN_DIR') ) ? WP_PLUGIN_DIR : $gm_scrnshots_content_dir . '/plugins';
+	//$gm_scrnshots_plugin_url = TODO;
+}
+
+function setPathsAndUrls_Codex() {
+	global 
+		$gm_scrnshots_content_dir, 
+		$gm_scrnshots_content_url, 
+		$gm_scrnshots_plugin_dir,
+		$gm_scrnshots_plugin_url
+	;
 	
 	if (!function_exists( 'is_ssl' ) ) {
 		function is_ssl() {
@@ -53,11 +84,13 @@ function setPathsAndUrls() {
 	}
 	$wp_content_url .= '/wp-content';
 
-	global $gm_scrnshots_plugin_dir, $gm_scrnshots_plugin_url;
 	$gm_scrnshots_plugin_dir = ABSPATH . 'wp-content/plugins/gm_scrnshots';
 	$gm_scrnshots_plugin_url = $wp_content_url . '/plugins/gm_scrnshots';
 	//$gm_scrnshots_plugin_url = trailingslashit(get_bloginfo('wpurl')) . PLUGINDIR .'/' . dirname(plugin_basename(__FILE__))
 }
+
+setPathsAndUrls_Codex();
+//setPathsAndUrls_WP_DB();
 
 /*
  * Register the widget
@@ -67,6 +100,8 @@ function widget_gm_scrnshots_init() {
 		return;
 		
 	function widget_gm_scrnshots($args) {
+		global $gm_scrnshots_plugin_dir;
+		
 		extract($args);
 		
 		//$options = get_option('widget_gm_scrnshots');
@@ -225,23 +260,31 @@ require_once(ABSPATH . "/wp-includes/js/tinymce/plugins/spellchecker/classes/uti
 //require_once("../../../../wp-includes/js/tinymce/plugins/spellchecker/classes/utils/JSON.php");
 //require_once('JSON.php');
 function gm_scrnshots_update_feed() {
-	wp_mail("giulio.mainardi@gmail.com", "test", "$gm_scrnshots_plugin_dir");
+	global
+		$gm_scrnshots_plugin_dir,
+		$gm_scrnshots_plugin_url
+	;
+	
 	$out = "\n<ul>\n"; // class, id?
-	file_put_contents("http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/cache/markup.html", $out);
-	file_put_contents("c:/$gm_scrnshots_plugin_dir/cache/markup.html", $out);
-	file_put_contents("c:/markup.html", $out);
-	return;
-		
-	// Get the feed and parse it
-	$feed = /*@*/file_get_contents("http://www.scrnshots.com/users/giuliom/screenshots.json");
-	// file_get_contents("http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/screenshots.json");
-	if (!$feed) echo "Could not load feed";
+	
+	// Fetch the feed
+	$feed_url = 
+		"http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/screenshots.json"
+		//"http://www.scrnshots.com/users/giuliom/screenshots.json"
+	;
+	$feed_str = /*@*/file_get_contents($feed_url);
+	if (!$feed_str) {
+		error_log("Could not load $feed_url");
+	}
+	
+	// Parse it
 	$jsonDecoder = new Moxiecode_JSON();
-	$json = $jsonDecoder->decode($feed, true);
+	$json = $jsonDecoder->decode($feed_str, true);
 
+	// Process it
 	$numShotsInFeed = count($json);
-
 	if ($numShotsInFeed > 0) {
+		$numItems = 3;
 		if ($numShotsInFeed < $numItems)
 			$numItems = $numShotsInFeed;
 
@@ -269,8 +312,7 @@ function gm_scrnshots_update_feed() {
 			
 			$tnFilenamePlusExt = $tnFilename . '.' . $tnExt;
 			// Asemble the thumbnail url
-
-			global $gm_scrnshots_plugin_dir, $gm_scrnshots_plugin_url;
+			
 			$tnPath = "$gm_scrnshots_plugin_dir/cache/$tnFilenamePlusExt";
 			$tnUrl = "$gm_scrnshots_plugin_url/cache/$tnFilenamePlusExt";
 		
@@ -321,28 +363,30 @@ function gm_scrnshots_update_feed() {
 	file_put_contents("$gm_scrnshots_plugin_dir/cache/markup.html", $out);
 }
 
-setPathsAndUrls();
-
 /*
  * Hooks registration
  */
-register_activation_hook(__FILE__, 'on_activation');
+/* register_activation_hook(__FILE__, 'on_activation');
 add_action('gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed');
-register_deactivation_hook(__FILE__, 'on_deactivation');
+register_deactivation_hook(__FILE__, 'on_deactivation'); */
 //add_action('admin_menu', 'scrnshots_admin_menu');
-add_action('plugins_loaded', 'widget_gm_scrnshots_init');
+add_action('plugins_loaded', 'on_plugins_loaded');
 //add_action('wp_print_scripts', 'scrnshots_js');
 
 function on_activation() {
-	setPathsAndUrls();
 	gm_scrnshots_update_feed();
 	wp_schedule_event(time()+3600*24, 'daily', 'gm_scrnshots_update_feed_event');
 }
 		
-function _on_deactivation() {
+function on_deactivation() {
 	remove_action('gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed');
 	wp_clear_scheduled_hook('gm_scrnshots_update_feed_event');
 	// TODO: Clear cache dir
+}
+
+function on_plugins_loaded() {
+	gm_scrnshots_update_feed();
+	widget_gm_scrnshots_init();
 }
 
 /*
