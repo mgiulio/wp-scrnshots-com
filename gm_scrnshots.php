@@ -1,134 +1,35 @@
 <?php
 /*
-Plugin Name: gm_scrnshots
+Plugin Name: ScrnShots.com Carousel
 Plugin URI: http://mgiulio.altervista.org
 Description: Blah blah
 Version: ??.??
-License: GPL
 Author: Giulio Mainardi
 Author URI: http://mgiulio.altervista.org
+License: GPL2
 */
 
-/*
-$username = 'giuliom'; //stripslashes(get_option('scrnshots_scrnshots_id'));
-$numItems = 10; //get_option('scrnshots_display_numitems');
+/*  Copyright 2011  Giulio Mainardi  (email : giulio.mainardi@gmail.com)
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2, as 
+    published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-$gm_scrnshots_plugin_dir = '';
-$gm_scrnshots_plugin_url = '';
+global $gm_scrnshots_plugin_dir, $gm_scrnshots_plugin_url;
 
-/*
- *
- */
-//define(ABSPATH, '/membri/giulio');
-require_once(ABSPATH . "/wp-includes/js/tinymce/plugins/spellchecker/classes/utils/JSON.php");
-//require_once("../../../../wp-includes/js/tinymce/plugins/spellchecker/classes/utils/JSON.php");
-//require_once('JSON.php');
-function shotsMarkup($username, $numItems) {
-	if (true/* Cache is old */) { // USe WP Cron ?
-		$out = "<ul>\n"; // class, id?
-		
-		// Get the feed and parse it
-		$feed = /*@*/file_get_contents("http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/screenshots.json");//'http://www.scrnshots.com/users/' . $username . '/screenshots.json');
-		if (!$feed) echo "Could not load feed";
-		$jsonDecoder = new Moxiecode_JSON();
-		$json = $jsonDecoder->decode($feed, true);
+function setPathsAndUrls() {
+	global $gm_scrnshots_plugin_dir, $gm_scrnshots_plugin_url;
 	
-		$numShotsInFeed = count($json);
-	
-		if ($numShotsInFeed > 0) {
-			if ($numShotsInFeed < $numItems)
-				$numItems = $numShotsInFeed;
-
-			for ($i = 0; $i < $numItems; $i++) {
-				$s = $json[$i];
-				
-				// Extract data from feed
-				$shotPage = $s['url'];
-				$title = ($s['description'])? str_replace( "\"","'", $s['description'] ): 'Screenshot from ScrnShots.com';
-				$fullSizeUrl = $s['images']['fullsize'];
-				
-				// Compute the thumbnail filename.
-				// Use the numeric Id.
-				$parts = array();
-				$parts = explode('/', $fullSizeUrl);
-				$tnFilename = $parts[5];
-				/*
-				$matches = array();
-				preg_match("/\/\d+\//", $fullSizeUrl, $matches);
-				$tnFilename = $matches[0];
-				*/
-				
-				// Determine shot image format
-				$tnExt = 'jpg';
-				
-				$tnFilenamePlusExt = $tnFilename . '.' . $tnExt;
-				// Asemble the thumbnail url
-	
-				global $gm_scrnshots_plugin_dir, $gm_scrnshots_plugin_url;
-				$tnPath = "$gm_scrnshots_plugin_dir/tn/$tnFilenamePlusExt";
-				$tnUrl = "$gm_scrnshots_plugin_url/tn/$tnFilenamePlusExt";
-			
-				$out .= "\n<li><a href=\"$shotPage\" title=\"$title\" rel=\"nofollow\"><img src=\"$tnUrl\" alt=\"$title\" /></a></li>";
-	
-				// Generate the local thumbnail if we don't have it
-				if (!file_exists("$tnPath")) {
-					$fullSizeUrl = 'http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/fullsize-test.jpg';
-					$fullIm = imagecreatefromjpeg($fullSizeUrl); // FIXME
-					if (!$fullIm)
-						echo 'Failed';
-
-					// Compute thumbnail size
-					$w = imagesx($fullIm);
-					$h = imagesy($fullIm);
-					$aspectRatio = (float)$w / (float)$h;
-					$tnSize = 240; // Pixels
-					if ($aspectRatio > 1.0) { // Landscape format
-						$tnW = $tnSize;
-						$tnH = $tnSize / $aspectRatio;
-					}
-					else { // Portrait format
-						$tnH = $tnSize;
-						$tnW = $tnSize * $aspectRatio;
-					}
-
-					// Thumbnail creation
-					$tnIm = imagecreatetruecolor($tnW, $tnH);
-					imagecopyresampled($tnIm, $fullIm, 0, 0, 0, 0, $tnW, $tnH, $w, $h); 
-
-					// Save it locally
-					//echo "Saving: $tnPath\n";
-					imagejpeg($tnIm, $tnPath); // This doesn't work
-					//fclose(fopen("/wp-content/plugins/scrnshots-com/tn/bar.test", 'w'));
-					//fclose(fopen("$tnPath", 'w'));
-					//fclose(fopen("./tn/foo.test", 'w'));
-					//fclose(fopen("$tnFilenamePlusExt", 'w'));
-					//imagejpeg($tnIm, "./tn/$tnFilenamePlusExt"); // This works
-					
-					imagedestroy($tnIm); // CHECKTHIS
-					imagedestroy($fullIm); // CHECKTHIS
-				} // Thumbnail generation
-			} // Feed items cycle
-		} // HTML string creation block
-		
-		// Close the markup
-		$out .= "</ul>\n";
-		
-		// Store it in persistent storage.
-	}
-		file_put_contents("$gm_scrnshots_plugin_dir/markup.html", $out);
-	
-	include("$gm_scrnshots_plugin_dir/markup.html");
-}
-
-/*
- * Register the widget
- */
-function widget_gm_scrnshots_init() {
-	if (!function_exists('register_sidebar_widget')) 
-		return;
-		
-	// Set paths and urls
 	if (!function_exists( 'is_ssl' ) ) {
 		function is_ssl() {
 			if ( isset($_SERVER['HTTPS']) ) {
@@ -156,14 +57,22 @@ function widget_gm_scrnshots_init() {
 	$gm_scrnshots_plugin_dir = ABSPATH . 'wp-content/plugins/gm_scrnshots';
 	$gm_scrnshots_plugin_url = $wp_content_url . '/plugins/gm_scrnshots';
 	//$gm_scrnshots_plugin_url = trailingslashit(get_bloginfo('wpurl')) . PLUGINDIR .'/' . dirname(plugin_basename(__FILE__))
+}
 
+/*
+ * Register the widget
+ */
+function widget_gm_scrnshots_init() {
+	if (!function_exists('register_sidebar_widget')) 
+		return;
+		
 	function widget_gm_scrnshots($args) {
 		extract($args);
 		
 		//$options = get_option('widget_gm_scrnshots');
 		
 		echo $before_widget; 
-		shotsMarkup("giuliom", 3);
+		include("$gm_scrnshots_plugin_dir/cache/markup.html");
 		echo $after_widget;
 	}
 
@@ -309,24 +218,136 @@ function scrnshots_js() {
 }
 
 /*
+ *
+ */
+//define(ABSPATH, '/membri/giulio');
+require_once(ABSPATH . "/wp-includes/js/tinymce/plugins/spellchecker/classes/utils/JSON.php");
+//require_once("../../../../wp-includes/js/tinymce/plugins/spellchecker/classes/utils/JSON.php");
+//require_once('JSON.php');
+function gm_scrnshots_update_feed() {
+	wp_mail("giulio.mainardi@gmail.com", "test", "$gm_scrnshots_plugin_dir");
+	$out = "\n<ul>\n"; // class, id?
+	file_put_contents("http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/cache/markup.html", $out);
+	file_put_contents("c:/$gm_scrnshots_plugin_dir/cache/markup.html", $out);
+	file_put_contents("c:/markup.html", $out);
+	return;
+		
+	// Get the feed and parse it
+	$feed = /*@*/file_get_contents("http://www.scrnshots.com/users/giuliom/screenshots.json");
+	// file_get_contents("http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/screenshots.json");
+	if (!$feed) echo "Could not load feed";
+	$jsonDecoder = new Moxiecode_JSON();
+	$json = $jsonDecoder->decode($feed, true);
+
+	$numShotsInFeed = count($json);
+
+	if ($numShotsInFeed > 0) {
+		if ($numShotsInFeed < $numItems)
+			$numItems = $numShotsInFeed;
+
+		for ($i = 0; $i < $numItems; $i++) {
+			$s = $json[$i];
+			
+			// Extract data from feed
+			$shotPage = $s['url'];
+			$title = ($s['description'])? str_replace( "\"","'", $s['description'] ): 'Screenshot from ScrnShots.com';
+			$fullSizeUrl = $s['images']['fullsize'];
+			
+			// Compute the thumbnail filename.
+			// Use the numeric Id.
+			$parts = array();
+			$parts = explode('/', $fullSizeUrl);
+			$tnFilename = $parts[5];
+			/*
+			$matches = array();
+			preg_match("/\/\d+\//", $fullSizeUrl, $matches);
+			$tnFilename = $matches[0];
+			*/
+			
+			// Determine shot image format
+			$tnExt = 'jpg';
+			
+			$tnFilenamePlusExt = $tnFilename . '.' . $tnExt;
+			// Asemble the thumbnail url
+
+			global $gm_scrnshots_plugin_dir, $gm_scrnshots_plugin_url;
+			$tnPath = "$gm_scrnshots_plugin_dir/cache/$tnFilenamePlusExt";
+			$tnUrl = "$gm_scrnshots_plugin_url/cache/$tnFilenamePlusExt";
+		
+			$out .= "\n<li><a href=\"$shotPage\" title=\"$title\" rel=\"nofollow\"><img src=\"$tnUrl\" alt=\"$title\" /></a></li>";
+
+			// Generate the local thumbnail if we don't have it
+			if (!file_exists("$tnPath")) {
+				$fullIm = imagecreatefromjpeg($fullSizeUrl); // FIXME
+				if (!$fullIm)
+					echo 'Failed';
+
+				// Compute thumbnail size
+				$w = imagesx($fullIm);
+				$h = imagesy($fullIm);
+				$aspectRatio = (float)$w / (float)$h;
+				$tnSize = 240; // Pixels
+				if ($aspectRatio > 1.0) { // Landscape format
+					$tnW = $tnSize;
+					$tnH = $tnSize / $aspectRatio;
+				}
+				else { // Portrait format
+					$tnH = $tnSize;
+					$tnW = $tnSize * $aspectRatio;
+				}
+
+				// Thumbnail creation
+				$tnIm = imagecreatetruecolor($tnW, $tnH);
+				imagecopyresampled($tnIm, $fullIm, 0, 0, 0, 0, $tnW, $tnH, $w, $h); 
+
+				// Cache it
+				imagejpeg($tnIm, $tnPath); // This doesn't work
+				//fclose(fopen("/wp-content/plugins/scrnshots-com/tn/bar.test", 'w'));
+				//fclose(fopen("$tnPath", 'w'));
+				//fclose(fopen("./tn/foo.test", 'w'));
+				//fclose(fopen("$tnFilenamePlusExt", 'w'));
+				//imagejpeg($tnIm, "./tn/$tnFilenamePlusExt"); // This works
+				
+				imagedestroy($tnIm); // CHECKTHIS
+				imagedestroy($fullIm); // CHECKTHIS
+			} // Thumbnail generation
+		} // Feed items cycle
+	} // HTML string creation block
+	
+	// Close the markup
+	$out .= "</ul>\n";
+	
+	// Store it in persistent storage.
+	file_put_contents("$gm_scrnshots_plugin_dir/cache/markup.html", $out);
+}
+
+setPathsAndUrls();
+
+/*
  * Hooks registration
  */
 register_activation_hook(__FILE__, 'on_activation');
+add_action('gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed');
 register_deactivation_hook(__FILE__, 'on_deactivation');
 //add_action('admin_menu', 'scrnshots_admin_menu');
 add_action('plugins_loaded', 'widget_gm_scrnshots_init');
 //add_action('wp_print_scripts', 'scrnshots_js');
 
-function on_activation()() {
-	wp_schedule_event(0, 'daily', 'wp_votd_update_contents');
-			$this->set_options('RESET');
-			$this->update_contents();
-		}
+function on_activation() {
+	setPathsAndUrls();
+	gm_scrnshots_update_feed();
+	wp_schedule_event(time()+3600*24, 'daily', 'gm_scrnshots_update_feed_event');
+}
 		
-		function _on_deactivation() {
-			delete_option('wp_votd_options');
-			delete_option('wp_votd_cache');
-			remove_action('wp_votd_update_contents', 'wp_votd_update_contents');
-			wp_clear_scheduled_hook('wp_votd_update_contents');
-		}
+function _on_deactivation() {
+	remove_action('gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed');
+	wp_clear_scheduled_hook('gm_scrnshots_update_feed_event');
+	// TODO: Clear cache dir
+}
+
+/*
+$username = 'giuliom'; //stripslashes(get_option('scrnshots_scrnshots_id'));
+$numItems = 10; //get_option('scrnshots_display_numitems');
+*/
+
 ?>
