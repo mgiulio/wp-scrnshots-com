@@ -25,6 +25,10 @@ License: GPL2
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
+function gm_log($msg) {
+	error_log( time() . ": $msg" );
+}
+
 /*
  * Setting paths and urls.
  */
@@ -265,83 +269,98 @@ function gm_scrnshots_update_feed() {
 		$gm_scrnshots_plugin_url
 	;
 	
-	error_log("Feed update process started at ", time());
+	gm_log("Feed update process started" );
 	
 	$out = "\n<ul>\n"; // class, id?
 	
+	//
 	// Fetch the feed
+	//
 	$feed_url = 
 		"http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/screenshots.json"
 		//"http://www.scrnshots.com/users/giuliom/screenshots.json"
 	;
-	error_log("Fetching feed $feed_url at ", time());
-	$feed_str = /*@*/file_get_contents($feed_url);
+	gm_log( "Fetching feed $feed_url" );
+	$feed_str = @file_get_contents($feed_url);
 	if ( ! $feed_str ) {
-		error_log("Could not load $feed_url");
+		gm_log( "Could not load $feed_url: $php_errormsg" );
+		wp_mail($developer, "gm_scrnshots", "Could not load $feed_url: $php_errormsg" );
+		exit();
 	}
-	error_log("Feed loaded at ", time());
+	gm_log("Feed loaded" );
 	
+	//
 	// Parse it
-	error_log("Feed parsing started at ", time());
+	//
+	gm_log("Feed parsing started" );
 	$jsonDecoder = new Moxiecode_JSON();
 	$json = $jsonDecoder->decode($feed_str, true);
-	error_log("Feed parsing finished at ", time()); 
+	gm_log("Feed parsing finished" );
 
+	//
 	// Process it
-	error_log("Feed processing started at ", time());
+	//
+	gm_log("Feed processing started" );
 	$num_shots_in_feed = count($json);
-	error_log("$num_shots_in_feed items in feed");
+	gm_log("$num_shots_in_feed items in feed");
 	if ($num_shots_in_feed > 0) {
 		$num_items = 10;
 		if ($num_shots_in_feed < $num_items)
 			$num_items = $num_shots_in_feed;
 
-		error_log("Processing $num_items");
+		gm_log("Processing $num_items");
 		for ($i = 0; $i < $num_items; $i++) {
-			error_log("Feed item #$i");
+			gm_log("Feed item #$i");
 			$s = $json[$i];
 			
 			// Extract data from feed
 			$shotPage = $s['url'];
 			$title = ($s['description'])? str_replace( "\"","'", $s['description'] ): 'Screenshot from ScrnShots.com';
-			$fullSizeUrl = $s['images']['fullsize'];
-			error_log("$shotPage, $fullSizeUrl");
+			$fullsize_url = $s['images']['fullsize'];
+			gm_log("$shotPage, $fullsize_url");
 			
-			// Compute the thumbnail filename.
-			// Use the numeric Id.
+			/* 
+			 * Determine the thumbnail filename and extension.
+			 * We extract them from the shot's url.
+			 * For the filename use the numeric ID.
+			 * To determine the image type we don't use getimagesize() for performance reasons.
+			 */
 			$parts = array();
-			$parts = explode('/', $fullSizeUrl);
+			$parts = explode('/', $fullsize_url);
 			$tnFilename = $parts[5];
-			/*
-			$matches = array();
-			preg_match("/\/\d+\//", $fullSizeUrl, $matches);
-			$tnFilename = $matches[0];
-			*/
-			
-			// Determine shot image format
-			$tnExt = 'jpg';
-			
-			$tnFilenamePlusExt = $tnFilename . '.' . $tnExt;
-			// Asemble the thumbnail url
-			
+			$tnExt = substr( $fullsize_url, -1 );
+			$tnFilenamePlusExt = "$tnFilename.$tnExt";
+			//
 			$tnPath = "$gm_scrnshots_plugin_dir/cache/$tnFilenamePlusExt";
 			$tnUrl = "$gm_scrnshots_plugin_url/cache/$tnFilenamePlusExt";
-			error_log("$tnPath, $tnUrl");
+			gm_log("$tnPath, $tnUrl");
 		
-			$out .= "\n<li><a href=\"$shotPage\" title=\"$title\" rel=\"nofollow\"><img src=\"$tnUrl\" alt=\"$title\" /></a></li>";
-
 			// Generate the local thumbnail if we don't have it
 			if (!file_exists("$tnPath")) {
-				error_log("Cached thumbnail does not exist");
-				error_log("$fullSizeUrl fetching started at ", time());
-				$fullIm = imagecreatefromjpeg($fullSizeUrl); // FIXME
-				if (!$fullIm)
-					error_log("Failed");
-				error_log("Finished at ", time());
+				gm_log("Cached thumbnail does not exist");
+				
+				// Fetch the full size shots from ScrnShots.com
+				gm_log("Fullsize shot fetching started: $fullsize_url" );
+				$full_im;
+				switch ( $tnExt ) {
+					case 'jpg':
+						$full_im = imagecreatefromjpeg( $fullsize_url );
+					break;
+					case 'png':
+						$full_im = imagecreatefrompng( $fullsize_url );
+					break;
+					default:
+						gm_log( "Unsupported image format: " . substr($fullsize_url, -1) );
+				}				
+				if ( ! $full_im ) {
+					gm_log("Could not create thumbnail for $fullsize_url");
+					continue;
+				}
+				gm_log( "Fullsize shot fetching finished: $fullsize_url" );
 
 				// Compute thumbnail size
-				$w = imagesx($fullIm);
-				$h = imagesy($fullIm);
+				$w = imagesx($full_im);
+				$h = imagesy($full_im);
 				$aspectRatio = (float)$w / (float)$h;
 				$tnSize = 240; // Pixels
 				if ($aspectRatio > 1.0) { // Landscape format
@@ -355,11 +374,11 @@ function gm_scrnshots_update_feed() {
 
 				// Thumbnail creation
 				$tnIm = imagecreatetruecolor($tnW, $tnH);
-				imagecopyresampled($tnIm, $fullIm, 0, 0, 0, 0, $tnW, $tnH, $w, $h); 
+				imagecopyresampled($tnIm, $full_im, 0, 0, 0, 0, $tnW, $tnH, $w, $h); 
 
 				// Cache it
 				imagejpeg($tnIm, $tnPath); // This doesn't work
-				error_log("Thumb saved");
+				gm_log("Thumb saved");
 				//fclose(fopen("/wp-content/plugins/scrnshots-com/tn/bar.test", 'w'));
 				//fclose(fopen("$tnPath", 'w'));
 				//fclose(fopen("./tn/foo.test", 'w'));
@@ -367,8 +386,10 @@ function gm_scrnshots_update_feed() {
 				//imagejpeg($tnIm, "./tn/$tnFilenamePlusExt"); // This works
 				
 				imagedestroy($tnIm); // CHECKTHIS
-				imagedestroy($fullIm); // CHECKTHIS
+				imagedestroy($full_im); // CHECKTHIS
 			} // Thumbnail generation
+			
+			$out .= "\n<li><a href=\"$shotPage\" title=\"$title\" rel=\"nofollow\"><img src=\"$tnUrl\" alt=\"$title\" /></a></li>";
 		} // Feed items cycle
 	} // HTML string creation block
 	
@@ -378,7 +399,7 @@ function gm_scrnshots_update_feed() {
 	// Store it in persistent storage.
 	file_put_contents("$gm_scrnshots_plugin_dir/cache/markup.html", $out);
 	
-	error_log("gm_scrnshots: feed $feed_url updated");
+	gm_log("gm_scrnshots: feed $feed_url updated");
 }
 
 /*
@@ -411,7 +432,7 @@ function on_plugins_loaded() {
 	  return $schedules; 
 	}*/
 	
-	//gm_scrnshots_update_feed();
+	gm_scrnshots_update_feed();
 	
 	widget_gm_scrnshots_init();
 }
