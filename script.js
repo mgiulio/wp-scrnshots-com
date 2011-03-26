@@ -4,7 +4,7 @@ jQuery(document).ready(function($) {
 	; 
 	
 	// Style the images
-	$('#scrnshotsrss .slideshow img').each(function() {
+	/* $('#gm_scrnshots img').each(function() {
 		var
 			$img = $(this),
 			w = $img.width(),
@@ -21,9 +21,9 @@ jQuery(document).ready(function($) {
 			$img.height(slideshowCanvasSize);
 			$img.width(slideshowCanvasSize * aspectRatio);
 		}
-	});
+	}); */
 	
-    $('#scrnshotsrss .slideshow').cycle({
+    $('#gm_scrnshots ul').cycle({
 		fx: 'fade' // choose your transition type, ex: fade, scrollUp, shuffle, etc...
 	});
 });

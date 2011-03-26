@@ -111,6 +111,7 @@ function widget_gm_scrnshots_init() {
 		//$options = get_option('widget_gm_scrnshots');
 		
 		echo $before_widget; 
+		echo $before_title . "ScrnShots.com" . $after_title;
 		include("$gm_scrnshots_plugin_dir/cache/markup.html");
 		echo $after_widget;
 	}
@@ -249,10 +250,12 @@ function scrnshots_admin_menu() {
 }
 
 function scrnshots_js() {
+	global $gm_scrnshots_plugin_url;
+	
 	if (!is_admin()) {
-		wp_enqueue_script('jquery');
-		wp_enqueue_script('cycle', $gm_scrnshots_plugin_url . '/jquery.cycle.all.js', array('jquery'));
-		wp_enqueue_script('scrnshots_script', $gm_scrnshots_plugin_url .'/script.js', array('jquery'));
+		wp_enqueue_script( "jquery" );
+		wp_enqueue_script( "cycle", "$gm_scrnshots_plugin_url/jquery.cycle.all.js", array('jquery') );
+		wp_enqueue_script( "gm_scrnshots_script", "$gm_scrnshots_plugin_url/script.js", array('jquery') );
 	}
 }
 
@@ -415,7 +418,7 @@ function gm_scrnshots_update_feed() {
 //register_deactivation_hook(__FILE__, 'on_deactivation');
 //add_action('admin_menu', 'scrnshots_admin_menu');
 add_action('plugins_loaded', 'on_plugins_loaded');
-//add_action('wp_print_scripts', 'scrnshots_js');
+add_action('wp_print_scripts', 'scrnshots_js');
 
 function on_activation() {
 	gm_scrnshots_update_feed();
@@ -439,7 +442,7 @@ function on_plugins_loaded() {
 	  return $schedules; 
 	}*/
 	
-	//gm_scrnshots_update_feed();
+	gm_scrnshots_update_feed();
 	
 	widget_gm_scrnshots_init();
 }
