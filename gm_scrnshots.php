@@ -26,7 +26,7 @@ License: GPL2
 */
 
 function gm_log($msg) {
-	error_log( time() . ": $msg" );
+	error_log(/*  time() .  */": $msg" );
 }
 
 /*
@@ -257,7 +257,10 @@ function scrnshots_js() {
 }
 
 /*
- *
+ * This function is invoked from WP Cron to update the shots displayed in the widget.
+ * Fetch the feed, generate the markup for the widget content and cache it.
+ * Full size images of new items will web retrieved to generate and cache their thumbnails. 
+ * Talk about feed parser.
  */
 //define(ABSPATH, '/membri/giulio');
 require_once(ABSPATH . "/wp-includes/js/tinymce/plugins/spellchecker/classes/utils/JSON.php");
@@ -271,11 +274,11 @@ function gm_scrnshots_update_feed() {
 	
 	gm_log("Feed update process started" );
 	
-	$out = "\n<ul>\n"; // class, id?
+	$markup = "\n<ul>\n"; // class, id?
 	
-	//
-	// Fetch the feed
-	//
+	/*
+	 * Fetch the feed
+	 */
 	$feed_url = 
 		"http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/screenshots.json"
 		//"http://www.scrnshots.com/users/giuliom/screenshots.json"
@@ -289,17 +292,17 @@ function gm_scrnshots_update_feed() {
 	}
 	gm_log("Feed loaded" );
 	
-	//
-	// Parse it
-	//
+	/*
+	 * Parse it
+	 */
 	gm_log("Feed parsing started" );
 	$jsonDecoder = new Moxiecode_JSON();
 	$json = $jsonDecoder->decode($feed_str, true);
 	gm_log("Feed parsing finished" );
 
-	//
-	// Process it
-	//
+	/*
+	 * Process it
+	 */
 	gm_log("Feed processing started" );
 	$num_shots_in_feed = count($json);
 	gm_log("$num_shots_in_feed items in feed");
@@ -317,7 +320,8 @@ function gm_scrnshots_update_feed() {
 			$shotPage = $s['url'];
 			$title = ($s['description'])? str_replace( "\"","'", $s['description'] ): 'Screenshot from ScrnShots.com';
 			$fullsize_url = $s['images']['fullsize'];
-			gm_log("$shotPage, $fullsize_url");
+			gm_log( "Shot page url: $shotPage" );
+			gm_log( " Fullsize url: $fullsize_url" );
 			
 			/* 
 			 * Determine the thumbnail filename and extension.
@@ -328,12 +332,13 @@ function gm_scrnshots_update_feed() {
 			$parts = array();
 			$parts = explode('/', $fullsize_url);
 			$tnFilename = $parts[5];
-			$tnExt = substr( $fullsize_url, -1 );
+			$tnExt = substr( $fullsize_url, -3 );
 			$tnFilenamePlusExt = "$tnFilename.$tnExt";
 			//
 			$tnPath = "$gm_scrnshots_plugin_dir/cache/$tnFilenamePlusExt";
 			$tnUrl = "$gm_scrnshots_plugin_url/cache/$tnFilenamePlusExt";
-			gm_log("$tnPath, $tnUrl");
+			gm_log("Thumbnail path: $tnPath" );
+			gm_log( "Thumbnail url: $tnUrl" );
 		
 			// Generate the local thumbnail if we don't have it
 			if (!file_exists("$tnPath")) {
@@ -389,15 +394,15 @@ function gm_scrnshots_update_feed() {
 				imagedestroy($full_im); // CHECKTHIS
 			} // Thumbnail generation
 			
-			$out .= "\n<li><a href=\"$shotPage\" title=\"$title\" rel=\"nofollow\"><img src=\"$tnUrl\" alt=\"$title\" /></a></li>";
+			$markup .= "\n<li><a href=\"$shotPage\" title=\"$title\" rel=\"nofollow\"><img src=\"$tnUrl\" alt=\"$title\" /></a></li>";
 		} // Feed items cycle
 	} // HTML string creation block
 	
 	// Close the markup
-	$out .= "</ul>\n";
+	$markup .= "</ul>\n";
 	
-	// Store it in persistent storage.
-	file_put_contents("$gm_scrnshots_plugin_dir/cache/markup.html", $out);
+	// Cache it
+	file_put_contents("$gm_scrnshots_plugin_dir/cache/markup.html", $markup);
 	
 	gm_log("gm_scrnshots: feed $feed_url updated");
 }
@@ -423,6 +428,8 @@ function on_deactivation() {
 }
 
 function on_plugins_loaded() {
+	gm_log( "on_plugins_loaded" );
+	
 	/* add_filter('cron_schedules', 'my_cron_definer');    
 	function my_cron_definer($schedules) {
 	  $schedules['threemin'] = array(
@@ -432,7 +439,7 @@ function on_plugins_loaded() {
 	  return $schedules; 
 	}*/
 	
-	gm_scrnshots_update_feed();
+	//gm_scrnshots_update_feed();
 	
 	widget_gm_scrnshots_init();
 }
