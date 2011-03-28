@@ -1,29 +1,39 @@
-jQuery(document).ready(function($) {
+//jQuery(document).ready(function($) {
+jQuery(window).load(function($) {
+	// All following sizes are expressed in pixels.
+	
 	var
-		slideshowCanvasSize = 240 // px
+		slideSize = 240 // A slide is a square.
+		, $ = jQuery
 	; 
 	
-	// Style the images
-	/* $('#gm_scrnshots img').each(function() {
+	/*
+	 * Center the pictures.
+	 *
+	 * A lansdscape format picture has to be centerd vertically,
+	 * a portrait format one horizontally.
+	 * The centering is done setting the padding of the parent <li>.
+	 */
+	// 
+	$('.widget_gm_scrnshots_widget ul li').each(function() {
 		var
-			$img = $(this),
+			$img = $(this.firstChild.firstChild),
 			w = $img.width(),
 			h = $img.height(),
-			aspectRatio = w / h
+			hPad = vPad = 30 // px
 		;
 		
-		// Resize and position the image depending on its aspect ratio format
-		if (aspectRatio > 1.0) { // Landscape format
-			$img.width(slideshowCanvasSize);
-			$img.height(slideshowCanvasSize / aspectRatio);
+		if (w > h) { // Landscape format
+			vPad = slideSize - h;
 		}
 		else { // Portrait format
-			$img.height(slideshowCanvasSize);
-			$img.width(slideshowCanvasSize * aspectRatio);
+			hPad = slideSize - w;
 		}
-	}); */
+		
+		$(this).css('padding', vPad/2.0 + 'px, ' + hPad/2.0 + 'px');
+	});
 	
-    $('#gm_scrnshots ul').cycle({
+    $('.widget_gm_scrnshots_widget ul').cycle({
 		fx: 'fade' // choose your transition type, ex: fade, scrollUp, shuffle, etc...
 	});
 });
