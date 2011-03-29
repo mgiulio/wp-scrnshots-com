@@ -3,7 +3,7 @@ jQuery(window).load(function($) {
 	// All following sizes are expressed in pixels.
 	
 	var
-		slideSize = 240 // A slide is a square.
+		slideSize = 270 // A slide is a square.
 		, $ = jQuery
 	; 
 	
@@ -15,7 +15,7 @@ jQuery(window).load(function($) {
 	 * The centering is done setting the padding of the parent <li>.
 	 */
 	// 
-	$('.widget_gm_scrnshots_widget ul li').each(function() {
+	$('.widget_gm_scrnshots ul li').each(function() {
 		var
 			$img = $(this.firstChild.firstChild),
 			w = $img.width(),
@@ -30,10 +30,18 @@ jQuery(window).load(function($) {
 			hPad = slideSize - w;
 		}
 		
-		$(this).css('padding', vPad/2.0 + 'px, ' + hPad/2.0 + 'px');
+		hPad /= 2;
+		vPad /= 2;
+		
+		$(this).css({
+			'padding-top': vPad + 'px',
+			'padding-right': hPad + 'px',
+			'padding-bottom': vPad + 'px',
+			'padding-left': hPad + 'px'
+		});
 	});
 	
-    $('.widget_gm_scrnshots_widget ul').cycle({
-		fx: 'fade' // choose your transition type, ex: fade, scrollUp, shuffle, etc...
+    $('.widget_gm_scrnshots ul').cycle({
+		fx: 'scrollLeft'
 	});
 });
