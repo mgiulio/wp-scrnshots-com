@@ -1,0 +1,23 @@
+.widget_gm_scrnshots  {
+}
+.widget_gm_scrnshots  h3 {
+	text-align: center;
+}
+.widget_gm_scrnshots ul {
+	width: 270px; 
+	height: 270px;
+	margin-left: auto;
+	margin-right: auto;
+	padding: 0;
+	background: #000000;
+}
+#gm_scrnshots  ul li {
+	background: transparent;
+	margin: 0;
+	padding: 0;
+	padding: 15px;  
+    border:  1px solid #ccc;  
+    background-color: #eee; 
+	top: 0;
+	left: 0;
+}

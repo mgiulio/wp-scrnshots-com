@@ -249,13 +249,21 @@ function scrnshots_admin_menu() {
 	add_options_page('scrnshots Settings', 'scrnshots', 8, basename(__FILE__), 'scrnshots_subpanel');
 }
 
-function scrnshots_js() {
+function on_wp_print_scripts() {
 	global $gm_scrnshots_plugin_url;
 	
 	if (!is_admin()) {
 		wp_enqueue_script( "jquery" );
 		wp_enqueue_script( "cycle", "$gm_scrnshots_plugin_url/jquery.cycle.all.js", array('jquery') );
 		wp_enqueue_script( "gm_scrnshots_script", "$gm_scrnshots_plugin_url/script.js", array('jquery') );
+	}
+}
+
+function on_wp_print_styles() {
+	global $gm_scrnshots_plugin_url;
+	
+	if (!is_admin()) {
+		wp_enqueue_style( "gm_scrnshots_style", "$gm_scrnshots_plugin_url/css/style.css" );
 	}
 }
 
@@ -283,8 +291,8 @@ function gm_scrnshots_update_feed() {
 	 * Fetch the feed
 	 */
 	$feed_url = 
-		"http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/screenshots.json"
-		//"http://www.scrnshots.com/users/giuliom/screenshots.json"
+		//"http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/screenshots.json"
+		"http://www.scrnshots.com/users/giuliom/screenshots.json"
 	;
 	gm_log( "Fetching feed $feed_url" );
 	$feed_str = @file_get_contents($feed_url);
@@ -413,12 +421,13 @@ function gm_scrnshots_update_feed() {
 /*
  * Hooks registration
  */
-//register_activation_hook(__FILE__, 'on_activation');
-//add_action('gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed');
-//register_deactivation_hook(__FILE__, 'on_deactivation');
+register_activation_hook(__FILE__, 'on_activation');
+add_action('gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed');
+register_deactivation_hook(__FILE__, 'on_deactivation');
 //add_action('admin_menu', 'scrnshots_admin_menu');
 add_action('plugins_loaded', 'on_plugins_loaded');
-add_action('wp_print_scripts', 'scrnshots_js');
+add_action( 'wp_print_scripts', 'on_wp_print_scripts' );
+add_action( 'wp_print_styles', 'on_wp_print_styles' );
 
 function on_activation() {
 	gm_scrnshots_update_feed();
@@ -442,7 +451,7 @@ function on_plugins_loaded() {
 	  return $schedules; 
 	}*/
 	
-	gm_scrnshots_update_feed();
+	//gm_scrnshots_update_feed();
 	
 	widget_gm_scrnshots_init();
 }
