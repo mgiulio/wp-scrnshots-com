@@ -25,76 +25,19 @@ License: GPL2
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-function gm_log($msg) {
-	error_log(/*  time() .  */": $msg" );
-}
-
 /*
  * Setting paths and urls.
  */
-if (!defined('ABSPATH')) {
-	die('Please do not load this file directly.');
-}
-
-global // Use an array?
-	$gm_scrnshots_content_dir, 
-	$gm_scrnshots_content_url, 
+global
 	$gm_scrnshots_plugin_dir,
 	$gm_scrnshots_plugin_url
 ;
+$gm_scrnshots_plugin_dir = plugin_dir_path( __FILE__ );
+$gm_scrnshots_plugin_url = plugin_dir_url( __FILE__ ); 
 
-function setPathsAndUrls_WP_DB() {
-	global 
-		$gm_scrnshots_content_dir, 
-		$gm_scrnshots_content_url, 
-		$gm_scrnshots_plugin_dir,
-		$gm_scrnshots_plugin_url
-	;
-	
-	$gm_scrnshots_content_dir = (defined('WP_CONTENT_DIR')) ? WP_CONTENT_DIR : ABSPATH . 'wp-content';
-	$gm_scrnshots_content_url = (defined('WP_CONTENT_URL')) ? WP_CONTENT_URL : get_option('siteurl') . '/wp-content';
-	$gm_scrnshots_plugin_dir =  (defined('WP_PLUGIN_DIR') ) ? WP_PLUGIN_DIR : $gm_scrnshots_content_dir . '/plugins';
-	//$gm_scrnshots_plugin_url = TODO;
+function gm_log($msg) {
+	error_log(/*  time() .  */": $msg" );
 }
-
-function setPathsAndUrls_Codex() {
-	global 
-		$gm_scrnshots_content_dir, 
-		$gm_scrnshots_content_url, 
-		$gm_scrnshots_plugin_dir,
-		$gm_scrnshots_plugin_url
-	;
-	
-	if (!function_exists( 'is_ssl' ) ) {
-		function is_ssl() {
-			if ( isset($_SERVER['HTTPS']) ) {
-				if ( 'on' == strtolower($_SERVER['HTTPS']) )
-					return true;
-				if ( '1' == $_SERVER['HTTPS'] )
-					return true;
-			} 
-			elseif ( isset($_SERVER['SERVER_PORT']) && ( '443' == $_SERVER['SERVER_PORT'] ) ) {
-				return true;
-			}
-			return false;
-		}
-	}
-
-	if ( version_compare( get_bloginfo( 'version' ) , '3.0' , '<' ) && is_ssl() ) {
-		$wp_content_url = str_replace( 'http://' , 'https://' , get_option( 'siteurl' ) );
-	} 
-	else {
-		$wp_content_url = get_option( 'siteurl' );
-	}
-	$wp_content_url .= '/wp-content';
-
-	$gm_scrnshots_plugin_dir = ABSPATH . 'wp-content/plugins/gm_scrnshots';
-	$gm_scrnshots_plugin_url = $wp_content_url . '/plugins/gm_scrnshots';
-	//$gm_scrnshots_plugin_url = trailingslashit(get_bloginfo('wpurl')) . PLUGINDIR .'/' . dirname(plugin_basename(__FILE__))
-}
-
-setPathsAndUrls_Codex();
-//setPathsAndUrls_WP_DB();
 
 /*
  * Register the widget
@@ -112,7 +55,7 @@ function widget_gm_scrnshots_init() {
 		
 		echo $before_widget; 
 		echo $before_title . "ScrnShots.com" . $after_title;
-		include("$gm_scrnshots_plugin_dir/cache/markup.html");
+		include("{$gm_scrnshots_plugin_dir}cache/markup.html");
 		echo $after_widget;
 	}
 
@@ -254,8 +197,8 @@ function on_wp_print_scripts() {
 	
 	if (!is_admin()) {
 		wp_enqueue_script( "jquery" );
-		wp_enqueue_script( "cycle", "$gm_scrnshots_plugin_url/jquery.cycle.all.js", array('jquery') );
-		wp_enqueue_script( "gm_scrnshots_script", "$gm_scrnshots_plugin_url/script.js", array('jquery') );
+		wp_enqueue_script( "cycle", "{$gm_scrnshots_plugin_url}jquery.cycle.all.js", array('jquery') );
+		wp_enqueue_script( "gm_scrnshots_script", "{$gm_scrnshots_plugin_url}script.js", array('jquery') );
 	}
 }
 
@@ -263,7 +206,7 @@ function on_wp_print_styles() {
 	global $gm_scrnshots_plugin_url;
 	
 	if (!is_admin()) {
-		wp_enqueue_style( "gm_scrnshots_style", "$gm_scrnshots_plugin_url/css/style.css" );
+		wp_enqueue_style( "gm_scrnshots_style", "{$gm_scrnshots_plugin_url}css/style.css" );
 	}
 }
 
@@ -346,8 +289,8 @@ function gm_scrnshots_update_feed() {
 			$tnExt = substr( $fullsize_url, -3 );
 			$tnFilenamePlusExt = "$tnFilename.$tnExt";
 			//
-			$tnPath = "$gm_scrnshots_plugin_dir/cache/$tnFilenamePlusExt";
-			$tnUrl = "$gm_scrnshots_plugin_url/cache/$tnFilenamePlusExt";
+			$tnPath = "{$gm_scrnshots_plugin_dir}cache/$tnFilenamePlusExt";
+			$tnUrl = "{$gm_scrnshots_plugin_url}cache/$tnFilenamePlusExt";
 			gm_log("Thumbnail path: $tnPath" );
 			gm_log( "Thumbnail url: $tnUrl" );
 		
@@ -413,7 +356,7 @@ function gm_scrnshots_update_feed() {
 	$markup .= "</ul>\n";
 	
 	// Cache it
-	file_put_contents("$gm_scrnshots_plugin_dir/cache/markup.html", $markup);
+	file_put_contents("{$gm_scrnshots_plugin_dir}cache/markup.html", $markup);
 	
 	gm_log("gm_scrnshots: feed $feed_url updated");
 }
