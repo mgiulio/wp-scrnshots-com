@@ -35,9 +35,10 @@ global
 $gm_scrnshots_plugin_dir = plugin_dir_path( __FILE__ );
 $gm_scrnshots_plugin_url = plugin_dir_url( __FILE__ ); 
 
-function gm_log($msg) {
-	error_log(/*  time() .  */": $msg" );
-}
+function gm_log( $msg ) {
+	trigger_error( $msg );
+	//error_log($msg);
+} 
 
 /*
  * Register the widget
@@ -226,7 +227,7 @@ function gm_scrnshots_update_feed() {
 		$gm_scrnshots_plugin_url
 	;
 	
-	gm_log("Feed update process started" );
+	gm_log( "Feed update process started" );
 	
 	$markup = "\n<ul>\n"; // class, id?
 	
@@ -238,13 +239,12 @@ function gm_scrnshots_update_feed() {
 		"http://www.scrnshots.com/users/giuliom/screenshots.json"
 	;
 	gm_log( "Fetching feed $feed_url" );
-	$feed_str = @file_get_contents($feed_url);
+	$feed_str = file_get_contents($feed_url);
 	if ( ! $feed_str ) {
-		gm_log( "Could not load $feed_url: $php_errormsg" );
-		wp_mail($developer, "gm_scrnshots", "Could not load $feed_url: $php_errormsg" );
+		gm_log( "Could not load $feed_url" );
 		exit();
 	}
-	gm_log("Feed loaded" );
+	gm_log( "Feed loaded" );
 	
 	/*
 	 * Parse it
