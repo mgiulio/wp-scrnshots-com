@@ -38,178 +38,140 @@ $gm_scrnshots_plugin_url = plugin_dir_url( __FILE__ );
 function gm_log( $msg ) {
 	trigger_error( $msg );
 	//error_log($msg);
-} 
+}
 
-/*
- * Register the widget
- */
-function widget_gm_scrnshots_init() {
-	if (!function_exists('register_sidebar_widget')) 
-		return;
+class gm_ScrnShots_Widget extends WP_Widget {
+
+	function gm_ScrnShots_Widget() {
+		$widget_ops = array(
+			'classname' => 'gm_scrnshots_widget_class', // gm_widget_scrnshots? There is no namespace conflict with Id?
+			'description' => 'Blah Blah'
+		);
+		$this->WP_Widget( 
+			'gm_scrnshots_widget_id', // Widget base HTML Id attribute.
+			'ScrnShot.com Widget',  // Name for the widget displayed on the configuration page
+			$widget_ops 
+		);
+	}
+	
+	function form( $instance ) {
+		$defaults = array(
+			'username' => '',
+			'num_items' => 5
+		);
 		
-	function widget_gm_scrnshots($args) {
+		$instance = wp_parse_args( (array)$instance, $defaults );
+
+		$username = $instance['username'];
+		$num_items = $instance['num_items'];
+		?>
+		<p>Username: <input type="text" name="<?php echo $this->get_field_name( 'username' ); ?>" value="<?php echo esc_attr( $username ); ?>" class="widefat" ></p>
+		<p>Howmany feed items: <input type="text" name="<?php echo $this->get_field_name( 'num_items' ); ?>" value="<?php echo esc_attr( $num_items ); ?>" class="widefat" ></p>
+		
+		<?php
+	}
+	
+	function update( $new_instance, $old_instance ) {
+		$instance = $old_instance;
+		
+		$instance['username'] = strip_tags( $new_instance['username'] );
+		$instance['num_items'] = strip_tags( $new_instance['num_items'] );
+		
+		return $instance;
+	}
+	
+	function widget( $args, $instance ) {
 		global $gm_scrnshots_plugin_dir;
 		
-		extract($args);
+		extract( $args );
 		
-		//$options = get_option('widget_gm_scrnshots');
-		
-		echo $before_widget; 
-		echo $before_title . "ScrnShots.com" . $after_title;
-		include("{$gm_scrnshots_plugin_dir}cache/markup.html");
+		echo $before_widget;
+		echo $before_title . $title . $after_title;
+		echo "<ul></ul>";
+		//include("{$gm_scrnshots_plugin_dir}cache/markup.html");
 		echo $after_widget;
 	}
-
-	function widget_gm_scrnshots_control() {
-		$options = get_option('widget_gm_scrnshots');
-
-		if ( $_POST['gm_scrnshots-submit'] ) {
-			/* $options['title'] = strip_tags(stripslashes($_POST['scrnshots-title']));
-			$options['before_images'] = $_POST['scrnshots-beforeimages'];
-			$options['after_images'] = $_POST['scrnshots-afterimages'];
-			update_option('widget_scrnshots', $options); */
-		}
-
-		/* $title = htmlspecialchars($options['title'], ENT_QUOTES);
-		$before_images = htmlspecialchars($options['before_images'], ENT_QUOTES);
-		$after_images = htmlspecialchars($options['after_images'], ENT_QUOTES); */
-		
-		/* echo '<p style="text-align:right;"><label for="gm_scrnshots-title">Title: <input style="width: 180px;" id="gsearch-title" name="gm_scrnshots-title" type="text" value="'.$title.'" /></label></p>';
-		echo '<p style="text-align:right;"><label for="gm_scrnshots-beforeimages">Before all images: <input style="width: 180px;" id="gm_scrnshots-beforeimages" name="gm_scrnshots-beforeimages" type="text" value="'.$before_images.'" /></label></p>';
-		echo '<p style="text-align:right;"><label for="gm_scrnshots-afterimages">After all images: <input style="width: 180px;" id="gm_scrnshots-afterimages" name="gm_scrnshots-afterimages" type="text" value="'.$after_images.'" /></label></p>';
-		echo '<input type="hidden" id="gm_scrnshots-submit" name="gm_scrnshots-submit" value="1" />'; */
-	}		
-
-	register_sidebar_widget('gm_scrnshots', 'widget_gm_scrnshots');
-	register_widget_control('gm_scrnshots', 'widget_gm_scrnshots_control', 300, 100);
 }
 
+/*
+ * Hooks registration
+ */
+add_action( 'widgets_init', 'gm_scrnshots_on_widgets_init' );
+add_action( 'wp_print_scripts', 'gm_scrnshots_on_wp_print_scripts' );
+add_action( 'wp_print_styles', 'gm_scrnshots_on_wp_print_styles' );
+add_action( 'gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed');
+add_action( 'wp_ajax_gm_scrnshots_ajax_get_feed', 'gm_scrnshots_ajax_get_feed' );
+add_action( 'wp_ajax_nopriv_gm_scrnshots_ajax_get_feed', 'gm_scrnshots_ajax_get_feed' );
+register_activation_hook(__FILE__, 'gm_scnshots_on_activation');
+register_deactivation_hook(__FILE__, 'gm_scrnshots_on_deactivation');
 
-function gm_scrnshots_subpanel() {
-    if (isset($_POST['save_gm_scrnshots_settings'])) {
-		$option_gm_scrnshots_id = $_POST['gm_scrnshots_id'];
-		$option_display_numitems = $_POST['display_numitems'];
-		$option_display_imagesize = $_POST['display_imagesize'];
-		$option_before = $_POST['before_image'];
-		$option_after = $_POST['after_image'];
-		$option_useimagecache = $_POST['use_image_cache'];
-		$option_imagecacheuri = $_POST['image_cache_uri'];
-		$option_imagecachedest = $_POST['image_cache_dest'];
-		update_option('gm_scrnshots_gm_scrnshots_id', $option_gm_scrnshots_id);
-		update_option('gm_scrnshots_display_numitems', $option_display_numitems);
-		update_option('gm_scrnshots_display_imagesize', $option_display_imagesize);
-		update_option('gm_scrnshots_before', $option_before);
-		update_option('gm_scrnshots_after', $option_after);
-		update_option('gm_scrnshots_use_image_cache', $option_useimagecache);
-		update_option('gm_scrnshots_image_cache_uri', $option_imagecacheuri);
-		update_option('gm_scrnshots_image_cache_dest', $option_imagecachedest);
-		?> <div class="updated"><p>scrnshots settings saved</p></div> <?php
-     }
-
-	?>
-
-	<div class="wrap">
-		<h2>scrnshots Settings</h2>
+/*
+ * Callbacks
+ */
+function gm_scrnshots_on_activation() {
+	gm_scrnshots_update_feed();
+	wp_schedule_event( time() + 3600 * 24, 'daily', 'gm_scrnshots_update_feed_event' );
+}
 		
-		<form method="post">
-		<table class="form-table">
-		 <tr valign="top">
-		  <th scope="row">ScrnShots.com Username</th>
-	      <td><input name="scrnshots_id" type="text" id="scrnshots_id" value="<?php echo get_option('scrnshots_scrnshots_id'); ?>" size="20" /><em> http://www.scrnshots.com/users/<strong>username</strong></em></td>
-         </tr>
-         <tr valign="top">
-          <th scope="row">Display</th>
-          <td>
-        	<select name="display_numitems" id="display_numitems">
-		      <option <?php if(get_option('scrnshots_display_numitems') == '1') { echo 'selected'; } ?> value="1">1</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '2') { echo 'selected'; } ?> value="2">2</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '3') { echo 'selected'; } ?> value="3">3</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '4') { echo 'selected'; } ?> value="4">4</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '5') { echo 'selected'; } ?> value="5">5</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '6') { echo 'selected'; } ?> value="6">6</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '7') { echo 'selected'; } ?> value="7">7</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '8') { echo 'selected'; } ?> value="8">8</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '9') { echo 'selected'; } ?> value="9">9</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '10') { echo 'selected'; } ?> value="10">10</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '11') { echo 'selected'; } ?> value="11">11</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '12') { echo 'selected'; } ?> value="12">12</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '13') { echo 'selected'; } ?> value="13">13</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '14') { echo 'selected'; } ?> value="14">14</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '15') { echo 'selected'; } ?> value="15">15</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '16') { echo 'selected'; } ?> value="16">16</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '17') { echo 'selected'; } ?> value="17">17</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '18') { echo 'selected'; } ?> value="18">18</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '19') { echo 'selected'; } ?> value="19">19</option>
-		      <option <?php if(get_option('scrnshots_display_numitems') == '20') { echo 'selected'; } ?> value="20">20</option>
-		      </select>
-			images, in 
-            <select name="display_imagesize" id="display_imagesize">
-		      <option <?php if(get_option('scrnshots_display_imagesize') == 'small') { echo 'selected'; } ?> value="small">small</option>
-		      <option <?php if(get_option('scrnshots_display_imagesize') == 'medium') { echo 'selected'; } ?> value="medium">medium</option>
-		      <option <?php if(get_option('scrnshots_display_imagesize') == 'large') { echo 'selected'; } ?> value="large">large</option>
-		      <option <?php if(get_option('scrnshots_display_imagesize') == 'fullsize') { echo 'selected'; } ?> value="fullsize">full</option>
-		    </select>
-			size.
-            </p>
-           </td> 
-         </tr>
-         <tr valign="top">
-          <th scope="row">HTML Wrapper</th>
-          <td><label for="before_image">Before Image:</label> <input name="before_image" type="text" id="before_image" value="<?php echo htmlspecialchars(stripslashes(get_option('scrnshots_before'))); ?>" size="10" />
-        	  <label for="after_image">After Image:</label> <input name="after_image" type="text" id="after_image" value="<?php echo htmlspecialchars(stripslashes(get_option('scrnshots_after'))); ?>" size="10" />
-          </td>
-         </tr>
-         </table>      
-
-        <h3>Cache Settings</h3>
-		<p>This allows you to store the images on your server and reduce the load on ScrnShots.com. Make sure the plugin works without the cache enabled first.</p>
-		<table class="form-table">
-         <tr valign="top">
-          <th scope="row">URL</th>
-          <td><input name="image_cache_uri" type="text" id="image_cache_uri" value="<?php echo get_option('scrnshots_image_cache_uri'); ?>" size="50" />
-          <em>http://yoursite.com/wp-content/scrnshots/</em></td>
-         </tr>
-         <tr valign="top">
-          <th scope="row">Full Path</th>
-          <td><input name="image_cache_dest" type="text" id="image_cache_dest" value="<?php echo get_option('scrnshots_image_cache_dest'); ?>" size="50" /> 
-          <em>/home/path/to/wp-content/scrnshots/</em></td>
-         </tr>
-		 <tr valign="top">
-		  <th scope="row" colspan="2" class="th-full">
-		  <input name="use_image_cache" type="checkbox" id="use_image_cache" value="true" <?php if(get_option('scrnshots_use_image_cache') == 'true') { echo 'checked="checked"'; } ?> />  
-		  <label for="use_image_cache">Enable the image cache</label></th>
-		 </tr>
-        </table>
-        <div class="submit">
-           <input type="submit" name="save_scrnshots_settings" value="<?php _e('Save Settings', 'save_scrnshots_settings') ?>" />
-        </div>
-        </form>
-    </div>
-
-<?php } // end scrnshots_subpanel()
-
-function scrnshots_admin_menu() {
-   if (function_exists('add_options_page'))
-	add_options_page('scrnshots Settings', 'scrnshots', 8, basename(__FILE__), 'scrnshots_subpanel');
+function gm_scrnshots_on_deactivation() {
+	remove_action('gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed');
+	wp_clear_scheduled_hook( 'gm_scrnshots_update_feed_event' );
 }
 
-function on_wp_print_scripts() {
+function gm_scrnshots_on_wp_print_scripts() {
 	global $gm_scrnshots_plugin_url;
 	
 	if (!is_admin()) {
 		wp_enqueue_script( "jquery" );
 		wp_enqueue_script( "cycle", "{$gm_scrnshots_plugin_url}jquery.cycle.all.js", array('jquery') );
-		wp_enqueue_script( "gm_scrnshots_script", "{$gm_scrnshots_plugin_url}script.js", array('jquery') );
+		wp_enqueue_script( "gm_scrnshots_script", "{$gm_scrnshots_plugin_url}js/script.js", array('jquery') );
 	}
 }
 
-function on_wp_print_styles() {
+function gm_scrnshots_on_wp_print_styles() {
 	global $gm_scrnshots_plugin_url;
 	
 	if (!is_admin()) {
 		wp_enqueue_style( "gm_scrnshots_style", "{$gm_scrnshots_plugin_url}css/style.css" );
 	}
 }
+
+function gm_scrnshots_on_widgets_init() {
+	/* wp_register_sidebar_widget( 
+		'gm_scrnshots_widget_id', // Id
+		'My ScrnShot.com',
+		'gm_scrnshots_widget_display',
+		array(
+			'classname' => 'gm_scrnshots_widget_class',
+			'description' => 'Blah blah...'
+		)
+	); */
+	
+	 /* wp_register_widget_control(
+		'gm_scrnshots_widget_id', // Id
+		'My ScrnShot.com',
+		'gm_scrnshots_widget_control'
+	 ); */
+	
+	register_widget( 'gm_ScrnShots_Widget' );
+}
+
+function gm_scrnshots_ajax_get_feed() {
+	include("{$gm_scrnshots_plugin_dir}cache/feed-ajax.json");
+	die();
+}
+
+
+/* function gm_scrnshots_widget_display( $args ) {
+	global $gm_scrnshots_plugin_dir;
+		
+	extract( $args );
+	
+	echo $before_widget;
+	echo $before_title . 'ScrnShots.com' . $after_title;
+	include("{$gm_scrnshots_plugin_dir}cache/markup.html");
+	echo $after_widget;
+} */
 
 /*
  * This function is invoked from WP Cron to update the shots displayed in the widget.
@@ -228,6 +190,9 @@ function gm_scrnshots_update_feed() {
 	;
 	
 	gm_log( "Feed update process started" );
+	
+	// Retrieve settings from db
+	//get_option( 'widget_gm_scrnshots_widget_id');
 	
 	$markup = "\n<ul>\n"; // class, id?
 	
@@ -360,48 +325,5 @@ function gm_scrnshots_update_feed() {
 	
 	gm_log("gm_scrnshots: feed $feed_url updated");
 }
-
-/*
- * Hooks registration
- */
-register_activation_hook(__FILE__, 'on_activation');
-add_action('gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed');
-register_deactivation_hook(__FILE__, 'on_deactivation');
-//add_action('admin_menu', 'scrnshots_admin_menu');
-add_action('plugins_loaded', 'on_plugins_loaded');
-add_action( 'wp_print_scripts', 'on_wp_print_scripts' );
-add_action( 'wp_print_styles', 'on_wp_print_styles' );
-
-function on_activation() {
-	gm_scrnshots_update_feed();
-	wp_schedule_event( time() + 3600 * 24, 'daily', 'gm_scrnshots_update_feed_event' );
-}
-		
-function on_deactivation() {
-	remove_action('gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed');
-	wp_clear_scheduled_hook('gm_scrnshots_update_feed_event');
-}
-
-function on_plugins_loaded() {
-	gm_log( "on_plugins_loaded" );
-	
-	/* add_filter('cron_schedules', 'my_cron_definer');    
-	function my_cron_definer($schedules) {
-	  $schedules['threemin'] = array(
-		  'interval'=> 60*3,
-		  'display'=>  __('Once Every 3 Minutes')
-	  );
-	  return $schedules; 
-	}*/
-	
-	//gm_scrnshots_update_feed();
-	
-	widget_gm_scrnshots_init();
-}
-
-/*
-$username = 'giuliom'; //stripslashes(get_option('scrnshots_scrnshots_id'));
-$num_items = 10; //get_option('scrnshots_display_numitems');
-*/
 
 ?>
