@@ -182,10 +182,6 @@ function gm_scrnshots_ajax_get_feed() {
  * Full size images of new items will web retrieved to generate and cache their thumbnails. 
  * Talk about feed parser.
  */
-//define(ABSPATH, '/membri/giulio');
-require_once(ABSPATH . "/wp-includes/js/tinymce/plugins/spellchecker/classes/utils/JSON.php");
-//require_once("../../../../wp-includes/js/tinymce/plugins/spellchecker/classes/utils/JSON.php");
-//require_once('JSON.php');
 function gm_scrnshots_update_feed() {
 	global
 		$gm_scrnshots_plugin_dir,
@@ -219,8 +215,7 @@ function gm_scrnshots_update_feed() {
 	 * Parse it
 	 */
 	gm_log("Feed parsing started" );
-	$jsonDecoder = new Moxiecode_JSON();
-	$json = $jsonDecoder->decode($feed_str, true);
+	$json = json_decode( $feed_str, true );
 	gm_log("Feed parsing finished" );
 
 	/*
