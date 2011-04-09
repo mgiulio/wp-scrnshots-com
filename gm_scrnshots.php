@@ -159,6 +159,7 @@ function gm_scrnshots_on_widgets_init() {
 }
 
 function gm_scrnshots_ajax_get_feed() {
+	global $gm_scrnshots_plugin_dir;
 	include("{$gm_scrnshots_plugin_dir}cache/feed-ajax.json");
 	die();
 }
@@ -196,7 +197,8 @@ function gm_scrnshots_update_feed() {
 	// Retrieve settings from db
 	//get_option( 'widget_gm_scrnshots_widget_id');
 	
-	$out = '[';
+	//$out = '[';
+	$out = array();
 	
 	/*
 	 * Fetch the feed
@@ -315,15 +317,18 @@ function gm_scrnshots_update_feed() {
 				imagedestroy($full_im); // CHECKTHIS
 			} // Thumbnail generation
 			
-			$out .= "[\"$tnUrl\",\"$title\",\"$shotPage\"],";
+			$out[] = array($tnUrl, $title, $shotPage);
+			//$out .= "[\"$tnUrl\",\"$title\",\"$shotPage\"],";
 		} // Feed items cycle
 	} // HTML string creation block
 	
 	// Close the out
-	$out[strlen($out)-1] = ']';
+	$out_json = json_encode($out);
+	//$out[strlen($out)-1] = ']';
 	
 	// Cache it
-	file_put_contents("{$gm_scrnshots_plugin_dir}cache/feed-ajax.json", $out);
+	file_put_contents("{$gm_scrnshots_plugin_dir}cache/feed-ajax.json", $out_json);
+	//file_put_contents("{$gm_scrnshots_plugin_dir}cache/feed-ajax.json", $out);
 	
 	gm_log("gm_scrnshots: feed $feed_url updated");
 }
