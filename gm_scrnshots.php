@@ -153,6 +153,8 @@ function gm_scrnshots_on_widgets_init() {
 		'gm_scrnshots_widget_control'
 	 ); */
 	
+	gm_scrnshots_update_feed();
+	
 	register_widget( 'gm_ScrnShots_Widget' );
 }
 
@@ -194,14 +196,14 @@ function gm_scrnshots_update_feed() {
 	// Retrieve settings from db
 	//get_option( 'widget_gm_scrnshots_widget_id');
 	
-	$markup = "\n<ul>\n"; // class, id?
+	$out = '[';
 	
 	/*
 	 * Fetch the feed
 	 */
 	$feed_url = 
-		//"http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/screenshots.json"
-		"http://www.scrnshots.com/users/giuliom/screenshots.json"
+		"http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/screenshots.json"
+		//"http://www.scrnshots.com/users/giuliom/screenshots.json"
 	;
 	gm_log( "Fetching feed $feed_url" );
 	$feed_str = file_get_contents($feed_url);
@@ -313,15 +315,15 @@ function gm_scrnshots_update_feed() {
 				imagedestroy($full_im); // CHECKTHIS
 			} // Thumbnail generation
 			
-			$markup .= "\n<li><a href=\"$shotPage\" title=\"$title\" rel=\"nofollow\"><img src=\"$tnUrl\" alt=\"$title\" /></a></li>";
+			$out .= "[\"$tnUrl\",\"$title\",\"$shotPage\"],";
 		} // Feed items cycle
 	} // HTML string creation block
 	
-	// Close the markup
-	$markup .= "</ul>\n";
+	// Close the out
+	$out[strlen($out)-1] = ']';
 	
 	// Cache it
-	file_put_contents("{$gm_scrnshots_plugin_dir}cache/markup.html", $markup);
+	file_put_contents("{$gm_scrnshots_plugin_dir}cache/feed-ajax.json", $out);
 	
 	gm_log("gm_scrnshots: feed $feed_url updated");
 }
