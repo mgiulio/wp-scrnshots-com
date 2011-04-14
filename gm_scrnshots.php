@@ -72,10 +72,27 @@ class gm_ScrnShots_Widget extends WP_Widget {
 	}
 	
 	function update( $new_instance, $old_instance ) {
+		global $gm_scrnshots_plugin_dir;
+		
 		$instance = $old_instance;
 		
 		$instance['username'] = strip_tags( $new_instance['username'] );
 		$instance['num_items'] = strip_tags( $new_instance['num_items'] );
+		
+		// Clear all the files in the cache
+		$dir = $gm_scrnshots_plugin_dir . 'cache/';
+		$objects = scandir($dir);
+		foreach ($objects as $object)
+		if ($object != "." && $object != "..")
+			unlink($dir."/".$object);
+		reset($objects); 
+	
+		//
+		gm_scrnshots_update_feed( $instance['username'], $instance['num_items'] );
+		
+		// Reschedule the event
+		wp_clear_scheduled_hook( 'gm_scrnshots_update_feed_event', array($instance['username'], $instance['num_items'])/*$old_instance*/ );
+		wp_schedule_event( time() + 180/*3600 * 24*/, 'gm_scrnshots_recurrence', 'gm_scrnshots_update_feed_event', array($instance['username'], $instance['num_items'])/*$instance*/ );
 		
 		return $instance;
 	}
@@ -99,23 +116,32 @@ class gm_ScrnShots_Widget extends WP_Widget {
 add_action( 'widgets_init', 'gm_scrnshots_on_widgets_init' );
 add_action( 'wp_print_scripts', 'gm_scrnshots_on_wp_print_scripts' );
 add_action( 'wp_print_styles', 'gm_scrnshots_on_wp_print_styles' );
-add_action( 'gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed');
+add_action( 'gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed', 10, 2);
 add_action( 'wp_ajax_gm_scrnshots_ajax_get_feed', 'gm_scrnshots_ajax_get_feed' );
 add_action( 'wp_ajax_nopriv_gm_scrnshots_ajax_get_feed', 'gm_scrnshots_ajax_get_feed' );
-register_activation_hook(__FILE__, 'gm_scnshots_on_activation');
-register_deactivation_hook(__FILE__, 'gm_scrnshots_on_deactivation');
+add_filter( 'cron_schedules', 'gm_scrnshots_schedules' );
+register_activation_hook( __FILE__, 'gm_scnshots_on_activation' );
+register_deactivation_hook( __FILE__, 'gm_scrnshots_on_deactivation' );
 
 /*
  * Callbacks
  */
+function gm_scrnshots_schedules($arr) {
+	$arr['gm_scrnshots_recurrence'] = array(
+		'interval' => 180,
+ 		'display' => __('gm rec')
+	);
+	return $arr;
+}
+
 function gm_scrnshots_on_activation() {
-	gm_scrnshots_update_feed();
-	wp_schedule_event( time() + 3600 * 24, 'daily', 'gm_scrnshots_update_feed_event' );
+	//gm_scrnshots_update_feed();
+	//wp_schedule_event( time() + 3600 * 24, 'daily', 'gm_scrnshots_update_feed_event' );
 }
 		
 function gm_scrnshots_on_deactivation() {
 	remove_action('gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed');
-	wp_clear_scheduled_hook( 'gm_scrnshots_update_feed_event' );
+	wp_clear_scheduled_hook( 'gm_scrnshots_update_feed_event' ); // FIXME: what about $args?
 }
 
 function gm_scrnshots_on_wp_print_scripts() {
@@ -123,8 +149,8 @@ function gm_scrnshots_on_wp_print_scripts() {
 	
 	if (!is_admin()) {
 		wp_enqueue_script( "jquery" );
-		wp_enqueue_script( "cycle", "{$gm_scrnshots_plugin_url}jquery.cycle.all.js", array('jquery') );
-		wp_enqueue_script( "gm_scrnshots_script", "{$gm_scrnshots_plugin_url}js/script.js", array('jquery') );
+		wp_enqueue_script( "gm_scrnshots_jcycle", "{$gm_scrnshots_plugin_url}jquery.cycle.all.js", array('jquery'), '', true  );
+		wp_enqueue_script( "gm_scrnshots_script", "{$gm_scrnshots_plugin_url}js/script.js", array('gm_scrnshots_jcycle'), '', true );
 	}
 }
 
@@ -153,7 +179,7 @@ function gm_scrnshots_on_widgets_init() {
 		'gm_scrnshots_widget_control'
 	 ); */
 	
-	gm_scrnshots_update_feed();
+	//gm_scrnshots_update_feed();
 	
 	register_widget( 'gm_ScrnShots_Widget' );
 }
@@ -182,13 +208,14 @@ function gm_scrnshots_ajax_get_feed() {
  * Full size images of new items will web retrieved to generate and cache their thumbnails. 
  * Talk about feed parser.
  */
-function gm_scrnshots_update_feed() {
+function gm_scrnshots_update_feed( $username, $num_items ) {
 	global
 		$gm_scrnshots_plugin_dir,
 		$gm_scrnshots_plugin_url
 	;
 	
 	gm_log( "Feed update process started" );
+	gm_log( "Arguments: $username, $num_items");
 	
 	// Retrieve settings from db
 	//get_option( 'widget_gm_scrnshots_widget_id');
@@ -200,6 +227,7 @@ function gm_scrnshots_update_feed() {
 	 * Fetch the feed
 	 */
 	$feed_url = 
+		//"http://www.scrnshots.com/users/$username/screenshots.json"
 		"http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/screenshots.json"
 		//"http://www.scrnshots.com/users/giuliom/screenshots.json"
 	;
@@ -225,7 +253,6 @@ function gm_scrnshots_update_feed() {
 	$num_shots_in_feed = count($json);
 	gm_log("$num_shots_in_feed items in feed");
 	if ($num_shots_in_feed > 0) {
-		$num_items = 10;
 		if ($num_shots_in_feed < $num_items)
 			$num_items = $num_shots_in_feed;
 
