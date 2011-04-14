@@ -105,7 +105,6 @@ class gm_ScrnShots_Widget extends WP_Widget {
 		echo $before_widget;
 		echo $before_title . $title . $after_title;
 		echo "<ul></ul>";
-		//include("{$gm_scrnshots_plugin_dir}cache/markup.html");
 		echo $after_widget;
 	}
 }
@@ -135,12 +134,10 @@ function gm_scrnshots_schedules($arr) {
 }
 
 function gm_scrnshots_on_activation() {
-	//gm_scrnshots_update_feed();
-	//wp_schedule_event( time() + 3600 * 24, 'daily', 'gm_scrnshots_update_feed_event' );
 }
 		
 function gm_scrnshots_on_deactivation() {
-	remove_action('gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed');
+	remove_action( 'gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed' );
 	wp_clear_scheduled_hook( 'gm_scrnshots_update_feed_event' ); // FIXME: what about $args?
 }
 
@@ -190,23 +187,10 @@ function gm_scrnshots_ajax_get_feed() {
 	die();
 }
 
-
-/* function gm_scrnshots_widget_display( $args ) {
-	global $gm_scrnshots_plugin_dir;
-		
-	extract( $args );
-	
-	echo $before_widget;
-	echo $before_title . 'ScrnShots.com' . $after_title;
-	include("{$gm_scrnshots_plugin_dir}cache/markup.html");
-	echo $after_widget;
-} */
-
 /*
  * This function is invoked from WP Cron to update the shots displayed in the widget.
- * Fetch the feed, generate the markup for the widget content and cache it.
+ * Fetch the feed, generate the JSON for the widget content and cache it.
  * Full size images of new items will web retrieved to generate and cache their thumbnails. 
- * Talk about feed parser.
  */
 function gm_scrnshots_update_feed( $username, $num_items ) {
 	global
@@ -217,9 +201,6 @@ function gm_scrnshots_update_feed( $username, $num_items ) {
 	gm_log( "Feed update process started" );
 	gm_log( "Arguments: $username, $num_items");
 	
-	// Retrieve settings from db
-	//get_option( 'widget_gm_scrnshots_widget_id');
-	
 	//$out = '[';
 	$out = array();
 	
@@ -229,7 +210,6 @@ function gm_scrnshots_update_feed( $username, $num_items ) {
 	$feed_url = 
 		//"http://www.scrnshots.com/users/$username/screenshots.json"
 		"http://mgiulio.altervista.org/wp-content/plugins/gm_scrnshots/screenshots.json"
-		//"http://www.scrnshots.com/users/giuliom/screenshots.json"
 	;
 	gm_log( "Fetching feed $feed_url" );
 	$feed_str = file_get_contents($feed_url);
@@ -327,30 +307,23 @@ function gm_scrnshots_update_feed( $username, $num_items ) {
 				imagecopyresampled($tnIm, $full_im, 0, 0, 0, 0, $tnW, $tnH, $w, $h); 
 
 				// Cache it
-				imagejpeg($tnIm, $tnPath); // This doesn't work
+				imagejpeg($tnIm, $tnPath);
 				gm_log("Thumb saved");
-				//fclose(fopen("/wp-content/plugins/scrnshots-com/tn/bar.test", 'w'));
-				//fclose(fopen("$tnPath", 'w'));
-				//fclose(fopen("./tn/foo.test", 'w'));
-				//fclose(fopen("$tnFilenamePlusExt", 'w'));
-				//imagejpeg($tnIm, "./tn/$tnFilenamePlusExt"); // This works
 				
-				imagedestroy($tnIm); // CHECKTHIS
-				imagedestroy($full_im); // CHECKTHIS
+				imagedestroy($tnIm);
+				imagedestroy($full_im);
 			} // Thumbnail generation
 			
 			$out[] = array($tnUrl, $title, $shotPage);
 			//$out .= "[\"$tnUrl\",\"$title\",\"$shotPage\"],";
 		} // Feed items cycle
-	} // HTML string creation block
+	}
 	
-	// Close the out
-	$out_json = json_encode($out);
+	$out_json = json_encode( $out );
 	//$out[strlen($out)-1] = ']';
 	
-	// Cache it
-	file_put_contents("{$gm_scrnshots_plugin_dir}cache/feed-ajax.json", $out_json);
-	//file_put_contents("{$gm_scrnshots_plugin_dir}cache/feed-ajax.json", $out);
+	// Cache the JSON file
+	file_put_contents( "{$gm_scrnshots_plugin_dir}cache/feed-ajax.json", $out_json );
 	
 	gm_log("gm_scrnshots: feed $feed_url updated");
 }
