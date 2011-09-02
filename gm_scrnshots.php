@@ -36,21 +36,20 @@ $gm_scrnshots_plugin_dir = plugin_dir_path( __FILE__ );
 $gm_scrnshots_plugin_url = plugin_dir_url( __FILE__ ); 
 
 function gm_log( $msg ) {
-	trigger_error( $msg );
+	trigger_error( "gm_scrnshots: $msg" );
 	//error_log($msg);
 }
 
 class gm_ScrnShots_Widget extends WP_Widget {
 
 	function gm_ScrnShots_Widget() {
-		$widget_ops = array(
-			'classname' => 'gm_scrnshots_widget_class', // gm_widget_scrnshots? There is no namespace conflict with Id?
-			'description' => 'Blah Blah'
-		);
 		$this->WP_Widget( 
 			'gm_scrnshots_widget_id', // Widget base HTML Id attribute.
 			'ScrnShot.com Widget',  // Name for the widget displayed on the configuration page
-			$widget_ops 
+			array(
+				'classname' => 'gm_scrnshots_widget_class',
+				'description' => 'Blah Blah'
+			) 
 		);
 	}
 	
@@ -67,7 +66,6 @@ class gm_ScrnShots_Widget extends WP_Widget {
 		?>
 		<p>Username: <input type="text" name="<?php echo $this->get_field_name( 'username' ); ?>" value="<?php echo esc_attr( $username ); ?>" class="widefat" ></p>
 		<p>Howmany feed items: <input type="text" name="<?php echo $this->get_field_name( 'num_items' ); ?>" value="<?php echo esc_attr( $num_items ); ?>" class="widefat" ></p>
-		
 		<?php
 	}
 	
@@ -76,23 +74,32 @@ class gm_ScrnShots_Widget extends WP_Widget {
 		
 		$instance = $old_instance;
 		
-		$instance['username'] = strip_tags( $new_instance['username'] );
-		$instance['num_items'] = strip_tags( $new_instance['num_items'] );
+		$username = $instance['username'] = strip_tags( $new_instance['username'] );
+		$num_items = $instance['num_items'] = strip_tags( $new_instance['num_items'] );
 		
-		// Clear all the files in the cache
-		$dir = $gm_scrnshots_plugin_dir . 'cache/';
-		$objects = scandir($dir);
-		foreach ($objects as $object)
-		if ($object != "." && $object != "..")
-			unlink($dir."/".$object);
-		reset($objects); 
+		$widget_instance_cache_folder = "instance-$this->number";
+		$widget_instance_cache_path = "{$gm_scrnshots_plugin_dir}cache/{$widget_instance_cache_folder}";
+		
+		if (file_exists( $widget_instance_cache_path ) ) {
+			// Clear all the files in the cache
+			$objects = scandir($widget_instance_cache_path);
+			foreach ($objects as $object)
+			if ($object != "." && $object != "..")
+				unlink($widget_instance_cache_path."/".$object);
+			reset($objects); 
+		}
+		else {
+			// Create the cahe directory for this widget instance
+			mkdir( $widget_instance_cache_path );
+		}
 	
-		//
-		gm_scrnshots_update_feed( $instance['username'], $instance['num_items'] );
-		
-		// Reschedule the event
-		wp_clear_scheduled_hook( 'gm_scrnshots_update_feed_event', array($instance['username'], $instance['num_items'])/*$old_instance*/ );
-		wp_schedule_event( time() + 180/*3600 * 24*/, 'gm_scrnshots_recurrence', 'gm_scrnshots_update_feed_event', array($instance['username'], $instance['num_items'])/*$instance*/ );
+		if ( $username && $num_items ) {
+			gm_log( $widget_instance_cache_folder );
+			gm_scrnshots_update_feed( $username, $num_items, $widget_instance_cache_folder );
+			// Reschedule the event
+			wp_clear_scheduled_hook( 'gm_scrnshots_update_feed_event', array( $username, $num_items, $widget_instance_cache_folder )/*$old_instance*/ );
+			wp_schedule_event( time() + 180/*3600 * 24*/, 'gm_scrnshots_recurrence', 'gm_scrnshots_update_feed_event', array( $user_name, $num_items, $widget_instance_cache_folder )/*$instance*/ );
+		}
 		
 		return $instance;
 	}
@@ -113,9 +120,11 @@ class gm_ScrnShots_Widget extends WP_Widget {
  * Hooks registration
  */
 add_action( 'widgets_init', 'gm_scrnshots_on_widgets_init' );
+//add_action( 'wp_register_sidebar_widget', 'gm_scrnshots_on_wp_register_sidebar_widget', 99, 1 );
+//add_action( 'wp_unregister_sidebar_widget', 'gm_scrnshots_on_wp_unregister_sidebar_widget', 99, 1 );
 add_action( 'wp_print_scripts', 'gm_scrnshots_on_wp_print_scripts' );
 add_action( 'wp_print_styles', 'gm_scrnshots_on_wp_print_styles' );
-add_action( 'gm_scrnshots_update_feed_event', 'gm_scrnshots_update_feed', 10, 2);
+add_action( 'gm_scrnshots_update_feed_event', 'gm_scrnshots_on_update_feed_event', 10, 3);
 add_action( 'wp_ajax_gm_scrnshots_ajax_get_feed', 'gm_scrnshots_ajax_get_feed' );
 add_action( 'wp_ajax_nopriv_gm_scrnshots_ajax_get_feed', 'gm_scrnshots_ajax_get_feed' );
 add_filter( 'cron_schedules', 'gm_scrnshots_schedules' );
@@ -125,7 +134,20 @@ register_deactivation_hook( __FILE__, 'gm_scrnshots_on_deactivation' );
 /*
  * Callbacks
  */
-function gm_scrnshots_schedules($arr) {
+function gm_scrnshots_on_update_feed_event( $a, $b, $c ) {
+	gm_log( "gm_scrnshots_update_feed_event fired" );
+	gm_scrnshots_update_feed( $a, $b, $c );
+}
+
+function gm_scrnshots_on_wp_register_sidebar_widget( $widget ) {
+	gm_log( "gm_scrnshots_on_wp_register_sidebar_widget: $widget[name], $widget[id]" );
+}
+
+function gm_scrnshots_on_wp_unregister_sidebar_widget( $widget ) {
+	gm_log( "gm_scrnshots_on_wp_unregister_sidebar_widget: $widget[name], $widget[id]" );
+}
+
+function gm_scrnshots_schedules( $arr ) {
 	$arr['gm_scrnshots_recurrence'] = array(
 		'interval' => 180,
  		'display' => __('gm rec')
@@ -192,14 +214,14 @@ function gm_scrnshots_ajax_get_feed() {
  * Fetch the feed, generate the JSON for the widget content and cache it.
  * Full size images of new items will web retrieved to generate and cache their thumbnails. 
  */
-function gm_scrnshots_update_feed( $username, $num_items ) {
+function gm_scrnshots_update_feed( $username, $num_items, $widget_instance_cache_folder ) {
 	global
 		$gm_scrnshots_plugin_dir,
 		$gm_scrnshots_plugin_url
 	;
 	
 	gm_log( "Feed update process started" );
-	gm_log( "Arguments: $username, $num_items");
+	gm_log( "Arguments: $username, $num_items, $widget_instance_cache_folder");
 	
 	//$out = '[';
 	$out = array();
@@ -260,8 +282,8 @@ function gm_scrnshots_update_feed( $username, $num_items ) {
 			$tnExt = substr( $fullsize_url, -3 );
 			$tnFilenamePlusExt = "$tnFilename.$tnExt";
 			//
-			$tnPath = "{$gm_scrnshots_plugin_dir}cache/$tnFilenamePlusExt";
-			$tnUrl = "{$gm_scrnshots_plugin_url}cache/$tnFilenamePlusExt";
+			$tnPath = "{$gm_scrnshots_plugin_dir}cache/$widget_instance_cache_folder/$tnFilenamePlusExt";
+			$tnUrl  = "{$gm_scrnshots_plugin_url}cache/$widget_instance_cache_folder/$tnFilenamePlusExt";
 			gm_log("Thumbnail path: $tnPath" );
 			gm_log( "Thumbnail url: $tnUrl" );
 		
@@ -323,9 +345,9 @@ function gm_scrnshots_update_feed( $username, $num_items ) {
 	//$out[strlen($out)-1] = ']';
 	
 	// Cache the JSON file
-	file_put_contents( "{$gm_scrnshots_plugin_dir}cache/feed-ajax.json", $out_json );
+	file_put_contents( "{$gm_scrnshots_plugin_dir}cache/$widget_instance_cache_folder/feed-ajax.json", $out_json );
 	
-	gm_log("gm_scrnshots: feed $feed_url updated");
+	gm_log( "gm_scrnshots: feed $feed_url updated" );
 }
 
 ?>
